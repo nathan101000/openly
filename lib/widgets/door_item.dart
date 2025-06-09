@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/door.dart';
 import '../providers/auth_provider.dart';
+import '../providers/favorites_provider.dart';
 import '../services/door_service.dart';
 
 class DoorItem extends StatefulWidget {
@@ -55,6 +56,8 @@ class _DoorItemState extends State<DoorItem> {
   Widget build(BuildContext context) {
     final isPulseUnlocked = unlockedMode == 'pulse';
     final isTimedUnlocked = unlockedMode == 'timed';
+    final favorites = Provider.of<FavoritesProvider>(context);
+    final isFavorite = favorites.isFavorite(widget.door.id);
 
     return Card(
       elevation: 4,
@@ -70,6 +73,13 @@ class _DoorItemState extends State<DoorItem> {
         trailing: Wrap(
           spacing: 8,
           children: [
+            IconButton(
+              icon: Icon(
+                isFavorite ? Icons.star : Icons.star_border,
+                color: isFavorite ? Colors.amber : Colors.grey,
+              ),
+              onPressed: () => favorites.toggleFavorite(widget.door.id),
+            ),
             Tooltip(
               message: 'Pulse Unlock',
               child: IconButton(

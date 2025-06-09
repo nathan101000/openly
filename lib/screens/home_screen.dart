@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/favorites_provider.dart';
 import '../services/door_service.dart';
 import '../models/door.dart';
 import '../widgets/door_item.dart';
@@ -17,6 +18,18 @@ class _HomeScreenState extends State<HomeScreen> {
   late AuthProvider auth;
   bool loading = true;
   List<Door> doors = [];
+  String searchQuery = '';
+  bool showFavoritesOnly = false;
+
+  List<Door> _filteredDoors(FavoritesProvider favorites) {
+    return doors.where((d) {
+      final matchesSearch =
+          d.name.toLowerCase().contains(searchQuery.toLowerCase());
+      final matchesFavorite =
+          !showFavoritesOnly || favorites.isFavorite(d.id);
+      return matchesSearch && matchesFavorite;
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -39,19 +52,52 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final favorites = Provider.of<FavoritesProvider>(context);
+    final visibleDoors = _filteredDoors(favorites);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Doors')),
+      appBar: AppBar(
+        title: const Text('Your Doors'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              showFavoritesOnly ? Icons.star : Icons.star_border,
+            ),
+            onPressed: () {
+              setState(() => showFavoritesOnly = !showFavoritesOnly);
+            },
+          )
+        ],
+      ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : doors.isEmpty
               ? const Center(child: Text('No Doors Available'))
               : RefreshIndicator(
                   onRefresh: _loadDoors,
-                  child: ListView.builder(
-                    itemCount: doors.length,
-                    itemBuilder: (context, index) {
-                      return DoorItem(door: doors[index]);
-                    },
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: TextField(
+                          decoration: const InputDecoration(
+                            hintText: 'Search doors',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          onChanged: (value) => setState(() => searchQuery = value),
+                        ),
+                      ),
+                      Expanded(
+                        child: visibleDoors.isEmpty
+                            ? const Center(child: Text('No Doors Found'))
+                            : ListView.builder(
+                                itemCount: visibleDoors.length,
+                                itemBuilder: (context, index) {
+                                  return DoorItem(door: visibleDoors[index]);
+                                },
+                              ),
+                      ),
+                    ],
                   ),
                 ),
     );
