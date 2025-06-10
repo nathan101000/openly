@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../services/door_service.dart';
 import '../models/door.dart';
+import '../models/floor.dart';
 import '../widgets/door_item.dart';
 import 'profile_screen.dart';
 
@@ -18,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late AuthProvider auth;
   bool loading = true;
   List<Door> doors = [];
+  Map<int, String> floorNames = {};
   String searchQuery = '';
   bool showFavoritesOnly = false;
 
@@ -31,6 +33,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
+  Map<int, List<Door>> _groupByFloor(List<Door> doors) {
+    final Map<int, List<Door>> groups = {};
+    for (final door in doors) {
+      final ids = door.floors.isEmpty ? [0] : door.floors;
+      for (final id in ids) {
+        groups.putIfAbsent(id, () => []).add(door);
+      }
+    }
+    return groups;
+  }
+
+  Widget _buildGroupedList(List<Door> doors) {
+    final groups = _groupByFloor(doors);
+    final floorIds = groups.keys.toList()
+      ..sort((a, b) => (floorNames[a] ?? '$a').compareTo(floorNames[b] ?? '$b'));
+
+    return ListView.builder(
+      itemCount: floorIds.length,
+      itemBuilder: (context, index) {
+        final floorId = floorIds[index];
+        final name = floorNames[floorId] ?? 'Unknown';
+        final items = groups[floorId]!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(name, style: Theme.of(context).textTheme.titleMedium),
+            ),
+            ...items.map((d) => DoorItem(door: d)).toList(),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -40,7 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadDoors() async {
     auth = Provider.of<AuthProvider>(context, listen: false);
     try {
-      doors = await DoorService.fetchDoors(auth.tenantId!, auth.accessToken!);
+      final unlockList =
+          await DoorService.fetchDoors(auth.tenantId!, auth.accessToken!);
+      doors = unlockList.doors;
+      floorNames = {for (var f in unlockList.floors) f.id: f.name};
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -90,12 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: visibleDoors.isEmpty
                             ? const Center(child: Text('No Doors Found'))
-                            : ListView.builder(
-                                itemCount: visibleDoors.length,
-                                itemBuilder: (context, index) {
-                                  return DoorItem(door: visibleDoors[index]);
-                                },
-                              ),
+                            : _buildGroupedList(visibleDoors),
                       ),
                     ],
                   ),

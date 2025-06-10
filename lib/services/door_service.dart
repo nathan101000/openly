@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/door.dart';
+import '../models/floor.dart';
+import '../models/unlock_list.dart';
 
 class DoorService {
-  static Future<List<Door>> fetchDoors(int tenantId, String token) async {
+  static Future<UnlockList> fetchDoors(int tenantId, String token) async {
     final url =
         'https://doors.thespencertower.com/api/api/tenants/$tenantId/unlocklist';
     final response = await http.get(
@@ -20,7 +22,11 @@ class DoorService {
     final doors = (data['doors'] as List)
         .map((d) => Door.fromJson(d as Map<String, dynamic>))
         .toList();
-    return doors;
+    final floors = (data['floors'] as List?)
+            ?.map((f) => Floor.fromJson(f as Map<String, dynamic>))
+            .toList() ??
+        [];
+    return UnlockList(doors: doors, floors: floors);
   }
 
   static Future<void> unlockDoor(

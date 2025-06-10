@@ -13,16 +13,28 @@ class ThemeProvider with ChangeNotifier {
 
   Future<void> _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
-    final isDark = prefs.getBool(_themeKey) ?? false;
-    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+    final modeStr = prefs.getString(_themeKey) ?? ThemeMode.system.name;
+    _themeMode = ThemeMode.values.firstWhere(
+      (e) => e.name == modeStr,
+      orElse: () => ThemeMode.system,
+    );
     notifyListeners();
   }
 
   Future<void> toggleTheme() async {
     final prefs = await SharedPreferences.getInstance();
-    _themeMode =
-        _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    await prefs.setBool(_themeKey, _themeMode == ThemeMode.dark);
+    switch (_themeMode) {
+      case ThemeMode.system:
+        _themeMode = ThemeMode.light;
+        break;
+      case ThemeMode.light:
+        _themeMode = ThemeMode.dark;
+        break;
+      case ThemeMode.dark:
+        _themeMode = ThemeMode.system;
+        break;
+    }
+    await prefs.setString(_themeKey, _themeMode.name);
     notifyListeners();
   }
 }
