@@ -26,7 +26,49 @@ class DoorService {
             ?.map((f) => Floor.fromJson(f as Map<String, dynamic>))
             .toList() ??
         [];
+
+    for (final door in doors) {
+      if (door.floors.isEmpty) {
+        door.floors = _inferFloorIds(door.name, floors);
+      }
+    }
+
     return UnlockList(doors: doors, floors: floors);
+  }
+
+  static List<int> _inferFloorIds(String name, List<Floor> floors) {
+    final ids = <int>[];
+    final lower = name.toLowerCase();
+    for (final floor in floors) {
+      if (lower.contains(floor.name.toLowerCase())) {
+        ids.add(floor.id);
+      }
+    }
+    if (ids.isNotEmpty) return ids;
+
+    final numberMatch = RegExp(r'\b(\d{3,})\b').firstMatch(name);
+    if (numberMatch != null) {
+      final num = int.parse(numberMatch.group(1)!);
+      final floorNum = num ~/ 100;
+      ids.addAll(_idsForNumber(floorNum, floors));
+    }
+
+    final flMatch =
+        RegExp(r'(\d+)(?:st|nd|rd|th)?\s*fl', caseInsensitive: true)
+            .firstMatch(name);
+    if (flMatch != null) {
+      final num = int.parse(flMatch.group(1)!);
+      ids.addAll(_idsForNumber(num, floors));
+    }
+
+    return ids;
+  }
+
+  static List<int> _idsForNumber(int num, List<Floor> floors) {
+    return floors
+        .where((f) => f.name.startsWith('$num'))
+        .map((f) => f.id)
+        .toList();
   }
 
   static Future<void> unlockDoor(

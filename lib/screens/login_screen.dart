@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:local_auth/local_auth.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,6 +16,43 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool loading = false;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  bool _canBiometric = false;
+  bool _hasStoredAuth = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initBiometric();
+  }
+
+  Future<void> _initBiometric() async {
+    final canCheck = await _localAuth.canCheckBiometrics &&
+        await _localAuth.isDeviceSupported();
+    final stored = await AuthService.loadStoredAuth();
+    setState(() {
+      _canBiometric = canCheck;
+      _hasStoredAuth = stored != null;
+    });
+  }
+
+  Future<void> _loginWithBiometric() async {
+    try {
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Authenticate to login',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
+      if (authenticated && mounted) {
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        await auth.biometricLogin();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
 
   Future<void> _login() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -79,6 +118,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     : const Text('Login'),
               ),
             ),
+            if (_canBiometric && _hasStoredAuth) ...[
+              const SizedBox(height: 20),
+              IconButton(
+                iconSize: 48,
+                icon: const Icon(Icons.fingerprint),
+                onPressed: loading ? null : _loginWithBiometric,
+              ),
+            ],
           ],
         ),
       ),

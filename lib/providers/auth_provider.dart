@@ -40,4 +40,16 @@ class AuthProvider extends ChangeNotifier {
     userName = null;
     notifyListeners();
   }
+
+  Future<void> biometricLogin() async {
+    final stored = await AuthService.loadStoredAuth();
+    if (stored == null) {
+      throw Exception('No stored credentials');
+    }
+    accessToken = stored.accessToken;
+    tenantId = stored.tenantId;
+    userName = stored.userName;
+    _isAuthenticated = true;
+    notifyListeners();
+  }
 }
