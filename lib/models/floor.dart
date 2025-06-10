@@ -6,7 +6,7 @@ class Floor {
 
   factory Floor.fromJson(Map<String, dynamic> json) {
     return Floor(
-      id: json['id'] as int,
+      id: json['Id'] as int,
       name: json['name'] as String,
     );
   }

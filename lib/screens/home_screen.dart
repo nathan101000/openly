@@ -33,12 +33,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
-  Map<int, List<Door>> _groupByFloor(List<Door> doors) {
-    final Map<int, List<Door>> groups = {};
+  Map<String, List<Door>> _groupByFloor(List<Door> doors) {
+    final Map<String, List<Door>> groups = {};
     for (final door in doors) {
-      final ids = door.floors.isEmpty ? [0] : door.floors;
-      for (final id in ids) {
-        groups.putIfAbsent(id, () => []).add(door);
+      final ids = door.floors.isEmpty ? [null] : door.floors;
+      if (ids.isEmpty) {
+        groups.putIfAbsent('Unknown', () => []).add(door);
+      } else {
+        for (final id in ids) {
+          final name = floorNames[id] ?? 'Unknown';
+          groups.putIfAbsent(name, () => []).add(door);
+        }
       }
     }
     return groups;
@@ -46,15 +51,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildGroupedList(List<Door> doors) {
     final groups = _groupByFloor(doors);
-    final floorIds = groups.keys.toList()
-      ..sort((a, b) => (floorNames[a] ?? '$a').compareTo(floorNames[b] ?? '$b'));
+    final floorNamesSorted = groups.keys.toList()
+      ..sort();
 
     return ListView.builder(
-      itemCount: floorIds.length,
+      itemCount: floorNamesSorted.length,
       itemBuilder: (context, index) {
-        final floorId = floorIds[index];
-        final name = floorNames[floorId] ?? 'Unknown';
-        final items = groups[floorId]!;
+        final name = floorNamesSorted[index];
+        final items = groups[name]!;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
