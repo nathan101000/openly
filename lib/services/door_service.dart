@@ -53,9 +53,8 @@ class DoorService {
       ids.addAll(_idsForNumber(floorNum, floors));
     }
 
-    final flMatch =
-        RegExp(r'(\d+)(?:st|nd|rd|th)?\s*fl', caseInsensitive: true)
-            .firstMatch(name);
+    final flMatch = RegExp(r'(\d+)(?:st|nd|rd|th)?\s*fl', caseSensitive: false)
+        .firstMatch(name);
     if (flMatch != null) {
       final num = int.parse(flMatch.group(1)!);
       ids.addAll(_idsForNumber(num, floors));
