@@ -66,9 +66,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
                         actions: [
                           IconButton(
                             icon: Icon(
-                                themeProvider.themeMode == ThemeMode.light
-                                    ? Icons.dark_mode
-                                    : Icons.light_mode),
+                              themeProvider.themeMode == ThemeMode.light
+                                  ? Icons.dark_mode
+                                  : themeProvider.themeMode == ThemeMode.dark
+                                      ? Icons.brightness_auto
+                                      : Icons.light_mode,
+                            ),
                             onPressed: () => themeProvider.toggleTheme(),
                           ),
                         ],

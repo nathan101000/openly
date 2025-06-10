@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,13 +30,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Door Access Login')),
+      appBar: AppBar(
+        title: const Text('Door Access Login'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              themeProvider.themeMode == ThemeMode.light
+                  ? Icons.dark_mode
+                  : themeProvider.themeMode == ThemeMode.dark
+                      ? Icons.brightness_auto
+                      : Icons.light_mode,
+            ),
+            onPressed: () => themeProvider.toggleTheme(),
+          ),
+        ],
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Icon(Icons.door_front_door, size: 72, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 20),
             TextField(
               controller: emailController,
               decoration: const InputDecoration(labelText: 'Email'),
@@ -46,12 +65,19 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: loading ? null : _login,
-              child: loading
-                  ? const CircularProgressIndicator()
-                  : const Text('Login'),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: loading ? null : _login,
+                child: loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Login'),
+              ),
             ),
           ],
         ),
