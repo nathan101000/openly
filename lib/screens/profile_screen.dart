@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -11,8 +12,8 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Profile')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Consumer<AuthProvider>(
-          builder: (context, auth, child) {
+        child: Consumer2<AuthProvider, ThemeProvider>(
+          builder: (context, auth, theme, child) {
             final displayName = auth.displayName ?? '';
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,6 +42,38 @@ class ProfileScreen extends StatelessWidget {
                   icon: Icons.verified_user,
                   title: 'User ID',
                   value: 'Unknown',
+                ),
+                const SizedBox(height: 20),
+                Text('Theme Color',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    for (final color in [
+                      const Color(0xff4b5c92),
+                      Colors.teal,
+                      Colors.deepOrange,
+                      Colors.purple
+                    ])
+                      GestureDetector(
+                        onTap: () => theme.updateSeedColor(color),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: theme.seedColor.value == color.value
+                                  ? Colors.black
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      )
+                  ],
                 ),
                 const Spacer(),
                 SizedBox(
