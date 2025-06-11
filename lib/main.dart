@@ -47,7 +47,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final textTheme = createTextTheme(context, "Inter", "Inter");
-    final theme = MaterialTheme(textTheme);
+    final theme = MaterialTheme(textTheme, themeProvider.seedColor);
 
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {

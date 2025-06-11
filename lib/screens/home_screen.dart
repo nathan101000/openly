@@ -23,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String searchQuery = '';
   bool showFavoritesOnly = false;
   final FocusNode _searchFocusNode = FocusNode(); // Added FocusNode
+  final TextEditingController _searchController = TextEditingController();
 
   List<Door> _filteredDoors(FavoritesProvider favorites) {
     return doors.where((d) {
@@ -63,26 +64,15 @@ class _HomeScreenState extends State<HomeScreen> {
         final name = floorNamesSorted[index];
         final items = groups[name]!;
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Floor Header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Text(
-                  name,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ),
-              const SizedBox(height: 4.0),
-              // List of doors under the floor
-              ...items.map((d) => DoorItem(door: d)).toList(),
-            ],
+        return ExpansionTile(
+          title: Text(
+            name,
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
+          children: items.map((d) => DoorItem(door: d)).toList(),
         );
       },
     );
@@ -113,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchFocusNode.dispose(); // Dispose FocusNode
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -145,31 +136,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: TextField(
-                            focusNode: _searchFocusNode, // Attach FocusNode
-                            showCursor: _searchFocusNode.hasFocus, // Conditional cursor
-                            decoration: InputDecoration(
-                              hintText: 'Search doors...',
-                              prefixIcon: Icon(Icons.search),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                  vertical: 14, horizontal: 16),
-                            ),
-                            onChanged: (value) =>
-                                setState(() => searchQuery = value),
-                          ),
+                        child: SearchBar(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          onChanged: (value) =>
+                              setState(() => searchQuery = value),
+                          leading: const Icon(Icons.search),
+                          hintText: 'Search doors...',
                         ),
                       ),
                       Expanded(
