@@ -22,53 +22,67 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<int, String> floorNames = {};
   String searchQuery = '';
   bool showFavoritesOnly = false;
+  final FocusNode _searchFocusNode = FocusNode(); // Added FocusNode
 
   List<Door> _filteredDoors(FavoritesProvider favorites) {
     return doors.where((d) {
       final matchesSearch =
           d.name.toLowerCase().contains(searchQuery.toLowerCase());
-      final matchesFavorite =
-          !showFavoritesOnly || favorites.isFavorite(d.id);
+      final matchesFavorite = !showFavoritesOnly || favorites.isFavorite(d.id);
       return matchesSearch && matchesFavorite;
     }).toList();
   }
 
   Map<String, List<Door>> _groupByFloor(List<Door> doors) {
-    final Map<String, List<Door>> groups = {};
+    final Map<String, Set<Door>> groups = {};
+
     for (final door in doors) {
-      final ids = door.floors.isEmpty ? [null] : door.floors;
-      if (ids.isEmpty) {
-        groups.putIfAbsent('Unknown', () => []).add(door);
-      } else {
-        for (final id in ids) {
-          final name = floorNames[id] ?? 'Unknown';
-          groups.putIfAbsent(name, () => []).add(door);
-        }
+      final ids = door.floors.isEmpty ? [null] : door.floors.toSet().toList();
+      final floorNamesForDoor = ids
+          .map((id) => floorNames[id] ?? 'Unknown')
+          .toSet(); // prevent same name repeating
+
+      for (final name in floorNamesForDoor) {
+        groups.putIfAbsent(name, () => {}).add(door); // use Set to avoid dupes
       }
     }
-    return groups;
+
+    // Convert to Map<String, List<Door>>
+    return {
+      for (final entry in groups.entries) entry.key: entry.value.toList(),
+    };
   }
 
   Widget _buildGroupedList(List<Door> doors) {
     final groups = _groupByFloor(doors);
-    final floorNamesSorted = groups.keys.toList()
-      ..sort();
+    final floorNamesSorted = groups.keys.toList()..sort();
 
     return ListView.builder(
       itemCount: floorNamesSorted.length,
       itemBuilder: (context, index) {
         final name = floorNamesSorted[index];
         final items = groups[name]!;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(name, style: Theme.of(context).textTheme.titleMedium),
-            ),
-            ...items.map((d) => DoorItem(door: d)).toList(),
-            const SizedBox(height: 8),
-          ],
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Floor Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  name,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 4.0),
+              // List of doors under the floor
+              ...items.map((d) => DoorItem(door: d)).toList(),
+            ],
+          ),
         );
       },
     );
@@ -94,6 +108,12 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     if (mounted) setState(() => loading = false);
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose(); // Dispose FocusNode
+    super.dispose();
   }
 
   @override
@@ -124,13 +144,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: TextField(
-                          decoration: const InputDecoration(
-                            hintText: 'Search doors',
-                            prefixIcon: Icon(Icons.search),
+                        padding: const EdgeInsets.all(12.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          onChanged: (value) => setState(() => searchQuery = value),
+                          child: TextField(
+                            focusNode: _searchFocusNode, // Attach FocusNode
+                            showCursor: _searchFocusNode.hasFocus, // Conditional cursor
+                            decoration: InputDecoration(
+                              hintText: 'Search doors...',
+                              prefixIcon: Icon(Icons.search),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(
+                                  vertical: 14, horizontal: 16),
+                            ),
+                            onChanged: (value) =>
+                                setState(() => searchQuery = value),
+                          ),
                         ),
                       ),
                       Expanded(
