@@ -7,6 +7,7 @@ class AuthProvider extends ChangeNotifier {
   String? accessToken;
   int? tenantId;
   String? userName;
+  String? displayName;
 
   bool get isAuthenticated => _isAuthenticated;
   bool get isChecking => _isChecking;
@@ -17,6 +18,7 @@ class AuthProvider extends ChangeNotifier {
       accessToken = auth.accessToken;
       tenantId = auth.tenantId;
       userName = auth.userName;
+      displayName = auth.displayName;
       _isAuthenticated = true;
     }
     _isChecking = false;
@@ -28,6 +30,7 @@ class AuthProvider extends ChangeNotifier {
     accessToken = auth.accessToken;
     tenantId = auth.tenantId;
     userName = auth.userName;
+    displayName = auth.displayName;
     _isAuthenticated = true;
     notifyListeners();
   }
