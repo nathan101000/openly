@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/auth_service.dart';
+import '../services/biometric_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,7 +19,6 @@ class _LoginScreenState extends State<LoginScreen>
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool loading = false;
-  final LocalAuthentication _localAuth = LocalAuthentication();
   bool _canBiometric = false;
   bool _hasStoredAuth = false;
   late final AnimationController _animController;
@@ -34,43 +35,57 @@ class _LoginScreenState extends State<LoginScreen>
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim =
         Tween(begin: const Offset(0, 0.1), end: Offset.zero).animate(_fadeAnim);
-    _initBiometric();
+    _init();
     _animController.forward();
   }
 
-  Future<void> _initBiometric() async {
-    final canCheck = await _localAuth.canCheckBiometrics &&
-        await _localAuth.isDeviceSupported();
-    final stored = await AuthService.loadStoredAuth();
-    setState(() {
-      _canBiometric = canCheck;
-      _hasStoredAuth = stored != null;
-    });
+  Future<void> _init() async {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    _canBiometric = settings.biometricsAvailable;
+    _hasStoredAuth = await AuthService.loadStoredAuth() != null;
+    setState(() {}); // refresh UI (shows / hides fingerprint)
   }
 
   Future<void> _loginWithBiometric() async {
-    try {
-      final authenticated = await _localAuth.authenticate(
-        localizedReason: 'Authenticate to login',
-        options: const AuthenticationOptions(biometricOnly: true),
-      );
-      if (authenticated && mounted) {
-        final auth = Provider.of<AuthProvider>(context, listen: false);
-        await auth.biometricLogin();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+
+    final didAuth = await authenticateWithBiometrics();
+    if (!didAuth) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Biometric authentication failed or canceled')),
+        );
       }
+      return;
+    }
+
+    try {
+      await auth.biometricLogin();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text('Login failed: $e')));
       }
     }
   }
 
   Future<void> _login() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
     setState(() => loading = true);
     try {
       await auth.login(emailController.text, passwordController.text);
+
+      // store or discard creds based on “Remember me”
+      if (settings.rememberMe) {
+        await settings.storeCredentials(
+          emailController.text,
+          passwordController.text,
+        );
+      } else {
+        await AuthService.clearAuth();
+      }
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.toString())));
@@ -107,64 +122,101 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(32),
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: SlideTransition(
-            position: _slideAnim,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Welcome',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    filled: true,
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    filled: true,
-                    border: OutlineInputBorder(),
-                  ),
-                  obscureText: true,
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: loading ? null : _login,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: loading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Login'),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: SingleChildScrollView(
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Welcome',
+                      style: Theme.of(context).textTheme.headlineMedium,
                     ),
-                  ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        filled: true,
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: passwordController,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        filled: true,
+                        border: OutlineInputBorder(),
+                      ),
+                      obscureText: true,
+                    ),
+                    Consumer<SettingsProvider>(
+                      builder: (context, settings, _) {
+                        return Column(
+                          children: [
+                            SwitchListTile(
+                              dense: true,
+                              title: const Text('Remember Me'),
+                              value: settings.rememberMe,
+                              onChanged: (v) => settings.setRememberMe(v),
+                            ),
+                            if (settings.biometricsAvailable)
+                              SwitchListTile(
+                                dense: true,
+                                title: const Text('Use biometrics'),
+                                value: settings.useBiometrics,
+                                onChanged: (v) => settings.setUseBiometrics(v),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: loading ? null : _login,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: loading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Login'),
+                        ),
+                      ),
+                    ),
+                    Consumer<SettingsProvider>(
+                      builder: (context, settings, _) {
+                        if (!_canBiometric ||
+                            !_hasStoredAuth ||
+                            !settings.useBiometrics) {
+                          return const SizedBox.shrink();
+                        }
+                        return Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            IconButton(
+                              iconSize: 48,
+                              icon: const Icon(Icons.fingerprint),
+                              onPressed: loading ? null : _loginWithBiometric,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                if (_canBiometric && _hasStoredAuth) ...[
-                  const SizedBox(height: 20),
-                  IconButton(
-                    iconSize: 48,
-                    icon: const Icon(Icons.fingerprint),
-                    onPressed: loading ? null : _loginWithBiometric,
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ),
