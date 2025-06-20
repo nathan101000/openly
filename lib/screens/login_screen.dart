@@ -20,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen>
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _canBiometric = false;
   bool _hasStoredAuth = false;
+  bool _obscurePassword = true;
   late final AnimationController _animController;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
@@ -121,23 +122,40 @@ class _LoginScreenState extends State<LoginScreen>
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 20),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    filled: true,
-                    border: OutlineInputBorder(),
+                AutofillGroup(
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: emailController,
+                        autofillHints: const [AutofillHints.username],
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          filled: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: passwordController,
+                        autofillHints: const [AutofillHints.password],
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          filled: true,
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility),
+                            onPressed: () => setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            }),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    filled: true,
-                    border: OutlineInputBorder(),
-                  ),
-                  obscureText: true,
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
