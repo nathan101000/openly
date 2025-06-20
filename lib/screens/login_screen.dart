@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -34,18 +35,25 @@ class _LoginScreenState extends State<LoginScreen>
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim =
         Tween(begin: const Offset(0, 0.1), end: Offset.zero).animate(_fadeAnim);
-    _initBiometric();
+    _init();
     _animController.forward();
   }
 
-  Future<void> _initBiometric() async {
-    final canCheck = await _localAuth.canCheckBiometrics &&
-        await _localAuth.isDeviceSupported();
+  Future<void> _init() async {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final creds = await settings.loadCredentials();
+    if (creds != null) {
+      emailController.text = creds['email']!;
+      passwordController.text = creds['password']!;
+    }
     final stored = await AuthService.loadStoredAuth();
     setState(() {
-      _canBiometric = canCheck;
+      _canBiometric = settings.biometricsAvailable;
       _hasStoredAuth = stored != null;
     });
+    if (settings.useBiometrics && _canBiometric && _hasStoredAuth && mounted) {
+      await _loginWithBiometric();
+    }
   }
 
   Future<void> _loginWithBiometric() async {
@@ -68,9 +76,14 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _login() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
     setState(() => loading = true);
     try {
       await auth.login(emailController.text, passwordController.text);
+      await settings.storeCredentials(
+        emailController.text,
+        passwordController.text,
+      );
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.toString())));
@@ -139,6 +152,27 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   obscureText: true,
                 ),
+                Consumer<SettingsProvider>(
+                  builder: (context, settings, _) {
+                    return Column(
+                      children: [
+                        SwitchListTile(
+                          dense: true,
+                          title: const Text('Remember Me'),
+                          value: settings.rememberMe,
+                          onChanged: (v) => settings.setRememberMe(v),
+                        ),
+                        if (settings.biometricsAvailable)
+                          SwitchListTile(
+                            dense: true,
+                            title: const Text('Use biometrics'),
+                            value: settings.useBiometrics,
+                            onChanged: (v) => settings.setUseBiometrics(v),
+                          ),
+                      ],
+                    );
+                  },
+                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -156,14 +190,23 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                 ),
-                if (_canBiometric && _hasStoredAuth) ...[
-                  const SizedBox(height: 20),
-                  IconButton(
-                    iconSize: 48,
-                    icon: const Icon(Icons.fingerprint),
-                    onPressed: loading ? null : _loginWithBiometric,
-                  ),
-                ],
+                Consumer<SettingsProvider>(
+                  builder: (context, settings, _) {
+                    if (!_canBiometric || !_hasStoredAuth || !settings.useBiometrics) {
+                      return const SizedBox.shrink();
+                    }
+                    return Column(
+                      children: [
+                        const SizedBox(height: 20),
+                        IconButton(
+                          iconSize: 48,
+                          icon: const Icon(Icons.fingerprint),
+                          onPressed: loading ? null : _loginWithBiometric,
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),
