@@ -107,6 +107,11 @@ class AuthService {
     await prefs.remove(_displayNameKey);
   }
 
+  static Future<bool> hasStoredAuth() async {
+    final auth = await loadStoredAuth();
+    return auth != null;
+  }
+
   static String _capitalizeUsername(String email) {
     final name = email.split('@').first;
     return name.isNotEmpty ? name[0].toUpperCase() + name.substring(1) : '';

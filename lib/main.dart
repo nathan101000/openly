@@ -6,6 +6,8 @@ import 'providers/favorites_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
+import 'services/auth_service.dart';
+import 'services/biometric_utils.dart';
 import 'util.dart';
 import 'theme.dart';
 
@@ -41,8 +43,24 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() =>
-        Provider.of<AuthProvider>(context, listen: false).loadAuthState());
+    Future.microtask(() async {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final settings = Provider.of<SettingsProvider>(context, listen: false);
+
+      await auth.loadAuthState(); // loads creds (if any)
+
+      if (auth.isAuthenticated &&
+          settings.useBiometrics &&
+          settings.biometricsAvailable) {
+        final didAuth = await authenticateWithBiometrics();
+        if (didAuth) {
+          auth.markAuthorized();
+        } else {
+          await auth.logout(); // wipe creds on failed scan
+        }
+      }
+      auth.finishChecking(); // splash finished – build UI
+    });
   }
 
   @override
