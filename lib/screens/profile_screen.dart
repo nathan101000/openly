@@ -9,7 +9,6 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Consumer2<AuthProvider, ThemeProvider>(
@@ -65,9 +64,10 @@ class ProfileScreen extends StatelessWidget {
                             color: color,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: theme.seedColor.value == color.value
-                                  ? Colors.black
-                                  : Colors.transparent,
+                              color:
+                                  theme.seedColor.toARGB32() == color.toARGB32()
+                                      ? Colors.black
+                                      : Colors.transparent,
                               width: 2,
                             ),
                           ),

@@ -8,7 +8,7 @@ Openly is a modern Flutter app that allows users to securely access and control 
 - 🚪 **Secure Door Control** (pulse or timed unlock via `door_service.dart`)
 - 🏠 **Home Screen** displaying available doors
 - 👤 **User Profile** with session management
-- 💚 **Favorites** support to quickly access preferred doors
+- 💚 **Favorites Tab** for quick access to preferred doors
 - 🔎 **Search** functionality for filtering doors
 - 🌙 **Material Theming** with light/dark support
 

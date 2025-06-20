@@ -1,0 +1,263 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/favorites_provider.dart';
+import '../services/door_service.dart';
+import '../models/door.dart';
+import '../models/floor.dart';
+import '../widgets/door_item.dart';
+
+class DoorListScreen extends StatefulWidget {
+  final bool favoritesOnly;
+  const DoorListScreen({super.key, this.favoritesOnly = false});
+
+  @override
+  State<DoorListScreen> createState() => _DoorListScreenState();
+}
+
+class _DoorListScreenState extends State<DoorListScreen> {
+  late AuthProvider auth;
+  bool loading = true;
+  List<Door> doors = [];
+  Map<int, String> floorNames = {};
+  String searchQuery = '';
+  int? selectedFloorId;
+  final FocusNode _searchFocusNode = FocusNode();
+  final TextEditingController _searchController = TextEditingController();
+
+  List<Door> _filteredDoors(FavoritesProvider favorites) {
+    return doors.where((d) {
+      final matchesSearch =
+          d.name.toLowerCase().contains(searchQuery.toLowerCase());
+      final matchesFavorite =
+          !widget.favoritesOnly || favorites.isFavorite(d.id);
+      final matchesFloor =
+          selectedFloorId == null || d.floors.contains(selectedFloorId);
+      return matchesSearch && matchesFavorite && matchesFloor;
+    }).toList();
+  }
+
+  Map<String, List<Door>> _groupByFloor(List<Door> doors) {
+    final Map<String, Set<Door>> groups = {};
+    for (final door in doors) {
+      final ids = door.floors.isEmpty ? [null] : door.floors.toSet().toList();
+      final names = ids.map((id) => floorNames[id] ?? 'Unknown').toSet();
+      for (final name in names) {
+        groups.putIfAbsent(name, () => {}).add(door);
+      }
+    }
+    return {for (final e in groups.entries) e.key: e.value.toList()};
+  }
+
+  Future<void> _loadDoors() async {
+    auth = Provider.of<AuthProvider>(context, listen: false);
+    try {
+      final unlockList =
+          await DoorService.fetchDoors(auth.tenantId!, auth.accessToken!);
+      doors = unlockList.doors;
+      floorNames = {for (var f in unlockList.floors) f.id: f.name};
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDoors());
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildChipBar() {
+    final chips = <Widget>[];
+    chips.add(Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: ChoiceChip(
+        label: const Text('All'),
+        selected: selectedFloorId == null,
+        onSelected: (_) => setState(() => selectedFloorId = null),
+      ),
+    ));
+    final entries = floorNames.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    for (final entry in entries) {
+      chips.add(Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: ChoiceChip(
+          label: Text(entry.value),
+          selected: selectedFloorId == entry.key,
+          onSelected: (_) => setState(() => selectedFloorId = entry.key),
+        ),
+      ));
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(children: chips),
+    );
+  }
+
+  List<Widget> _buildSlivers(List<Door> doors) {
+    final groups = _groupByFloor(doors);
+    final floorNamesSorted = groups.keys.toList()..sort();
+    final slivers = <Widget>[];
+    for (final name in floorNamesSorted) {
+      final items = groups[name]!;
+      slivers.add(SliverPersistentHeader(
+        pinned: false,
+        delegate: _FloorHeader(name),
+      ));
+      slivers.add(SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => DoorItem(door: items[index]),
+          childCount: items.length,
+        ),
+      ));
+    }
+    return slivers;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final favorites = Provider.of<FavoritesProvider>(context);
+    final visibleDoors = _filteredDoors(favorites);
+
+    return Scaffold(
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : doors.isEmpty
+              ? const Center(child: Text('No Doors Available'))
+              : RefreshIndicator(
+                  onRefresh: _loadDoors,
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _SearchBarHeader(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          onChanged: (v) => setState(() => searchQuery = v),
+                        ),
+                      ),
+                      if (!widget.favoritesOnly)
+                        SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _ChipBarHeader(_buildChipBar()),
+                        ),
+                      if (visibleDoors.isEmpty)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(child: Text('No Doors Found')),
+                        )
+                      else
+                        ..._buildSlivers(visibleDoors),
+                    ],
+                  ),
+                ),
+    );
+  }
+}
+
+class _FloorHeader extends SliverPersistentHeaderDelegate {
+  final String title;
+  _FloorHeader(this.title);
+
+  @override
+  double get minExtent => 40;
+  @override
+  double get maxExtent => 40;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).colorScheme.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: Theme.of(context)
+            .textTheme
+            .titleLarge
+            ?.copyWith(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _FloorHeader oldDelegate) =>
+      oldDelegate.title != title;
+}
+
+class _SearchBarHeader extends SliverPersistentHeaderDelegate {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+
+  _SearchBarHeader({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+  });
+
+  @override
+  double get minExtent => 76; // Increased
+  @override
+  double get maxExtent => 76;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      padding: const EdgeInsets.symmetric(
+          horizontal: 12.0, vertical: 8.0), // more breathing room
+      alignment: Alignment.center,
+      child: SearchBar(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onChanged,
+        leading: const Icon(Icons.search),
+        hintText: 'Search doors...',
+        shadowColor: WidgetStatePropertyAll(Colors.transparent),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _SearchBarHeader oldDelegate) => false;
+}
+
+class _ChipBarHeader extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _ChipBarHeader(this.child);
+
+  @override
+  double get minExtent => 84;
+  @override
+  double get maxExtent => 84;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      alignment: Alignment.centerLeft,
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _ChipBarHeader oldDelegate) => false;
+}

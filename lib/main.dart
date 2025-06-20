@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:openly/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
+import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'screens/login_screen.dart';
@@ -61,23 +61,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
                   body: Center(child: CircularProgressIndicator()),
                 )
               : auth.isAuthenticated
-                  ? Scaffold(
-                      appBar: AppBar(
-                        actions: [
-                          IconButton(
-                            icon: Icon(
-                              switch (themeProvider.themeMode) {
-                                ThemeMode.light => Icons.light_mode,
-                                ThemeMode.dark => Icons.dark_mode,
-                                ThemeMode.system => Icons.brightness_auto,
-                              },
-                            ),
-                            onPressed: () => themeProvider.toggleTheme(),
-                          ),
-                        ],
-                      ),
-                      body: const MainScreen(),
-                    )
+                  ? const MainScreen() // AppBar handled here
                   : const LoginScreen(),
         );
       },
