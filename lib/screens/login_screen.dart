@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
+import '../models/api_exception.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
+import '../widgets/snackbar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -72,9 +74,13 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => loading = true);
     try {
       await auth.login(emailController.text, passwordController.text);
+      if (mounted) {
+        showAppSnackBar(context, 'Login successful!', success: true);
+      }
+    } on ApiException catch (e) {
+      showAppSnackBar(context, e.message);
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      showAppSnackBar(context, 'Unexpected error occurred');
     } finally {
       setState(() => loading = false);
     }

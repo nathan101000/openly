@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import './snackbar.dart';
 import 'package:provider/provider.dart';
 import '../models/door.dart';
 import '../providers/auth_provider.dart';
@@ -7,7 +8,10 @@ import '../services/door_service.dart';
 
 class DoorItem extends StatefulWidget {
   final Door door;
-  const DoorItem({super.key, required this.door});
+  final VoidCallback? onUnlock; // Add this line
+
+  const DoorItem(
+      {super.key, required this.door, this.onUnlock}); // Update constructor
 
   @override
   State<DoorItem> createState() => _DoorItemState();
@@ -33,6 +37,11 @@ class _DoorItemState extends State<DoorItem> {
         auth.accessToken!,
         isPulse ? 0 : duration,
       );
+
+      // Call the onUnlock callback if provided
+      if (widget.onUnlock != null) {
+        widget.onUnlock!();
+      }
 
       // Keep it unlocked for the duration
       await Future.delayed(Duration(seconds: duration));
@@ -78,7 +87,15 @@ class _DoorItemState extends State<DoorItem> {
                 isFavorite ? Icons.star : Icons.star_border,
                 color: isFavorite ? Colors.amber : Colors.grey,
               ),
-              onPressed: () => favorites.toggleFavorite(widget.door.id),
+              onPressed: () {
+                favorites.toggleFavorite(widget.door.id);
+                showAppSnackBar(
+                  context,
+                  isFavorite ? 'Removed from favorites' : 'Added to favorites',
+                  success: !isFavorite,
+                  backgroundColor: isFavorite ? Colors.grey : null,
+                );
+              },
             ),
             Tooltip(
               message: 'Pulse Unlock',
