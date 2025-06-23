@@ -4,7 +4,6 @@ import '../providers/auth_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../services/door_service.dart';
 import '../models/door.dart';
-import '../models/floor.dart';
 import '../widgets/door_item.dart';
 
 class DoorListScreen extends StatefulWidget {
