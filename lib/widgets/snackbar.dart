@@ -60,19 +60,38 @@ void showCountdownSnackBar(
                 ),
                 child: Row(
                   children: [
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        SizedBox(
-                          width: 32,
-                          height: 32,
-                          child: CircularProgressIndicator(
-                            value: current / seconds,
-                            strokeWidth: 3,
-                            backgroundColor: Colors.green.shade200,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                                Colors.white),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            begin: current / seconds,
+                            end: (current - 1) / seconds,
                           ),
+                          duration: const Duration(milliseconds: 900),
+                          builder: (context, value, child) {
+                            return SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: CircularProgressIndicator(
+                                value: value,
+                                strokeWidth: 3,
+                                backgroundColor: Colors.green.shade200,
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                    Colors.white),
+                              ),
+                            );
+                          },
                         ),
                         Text(
                           '$current',
@@ -82,16 +101,6 @@ void showCountdownSnackBar(
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        message,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
                     ),
                   ],
                 ),
