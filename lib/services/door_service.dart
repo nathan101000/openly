@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../models/api_exception.dart';
 import '../models/door.dart';
 import '../models/floor.dart';
 import '../models/unlock_list.dart';
@@ -16,8 +17,17 @@ class DoorService {
       },
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to load doors');
+      try {
+        final decoded = jsonDecode(response.body);
+        final errorMessage =
+            decoded['message'] ?? decoded['error'] ?? 'Failed to load doors';
+        throw ApiException('fetch_doors_failed', errorMessage);
+      } catch (_) {
+        throw ApiException(
+            'invalid_response', 'Failed to load doors.\n${response.body}');
+      }
     }
+
     final data = jsonDecode(response.body);
     final doors = (data['doors'] as List)
         .map((d) => Door.fromJson(d as Map<String, dynamic>))
@@ -87,7 +97,15 @@ class DoorService {
       body: jsonEncode({'doorId': doorId, 'floorId': null, 'minutes': minutes}),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to unlock door');
+      try {
+        final decoded = jsonDecode(response.body);
+        final errorMessage =
+            decoded['message'] ?? decoded['error'] ?? 'Failed to unlock door';
+        throw ApiException('unlock_failed', errorMessage);
+      } catch (_) {
+        throw ApiException(
+            'invalid_response', 'Failed to unlock door.\n${response.body}');
+      }
     }
   }
 }

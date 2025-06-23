@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/api_exception.dart';
 import '../providers/auth_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../services/door_service.dart';
 import '../models/door.dart';
 import '../widgets/door_item.dart';
+import '../widgets/snackbar.dart';
 
 class DoorListScreen extends StatefulWidget {
   final bool favoritesOnly;
@@ -55,12 +57,27 @@ class _DoorListScreenState extends State<DoorListScreen> {
           await DoorService.fetchDoors(auth.tenantId!, auth.accessToken!);
       doors = unlockList.doors;
       floorNames = {for (var f in unlockList.floors) f.id: f.name};
+      // Show success only if there are doors (optional)
+      if (mounted && doors.isNotEmpty) {
+        showAppSnackBar(context, 'Doors loaded successfully',
+            success: true, duration: const Duration(seconds: 1));
+      }
+      // If you want to always show success, use:
+      // if (mounted) showAppSnackBar(context, 'Doors refreshed', success: true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unexpected error occurred')),
+        );
       }
     }
+
     if (mounted) setState(() => loading = false);
   }
 
@@ -118,7 +135,13 @@ class _DoorListScreenState extends State<DoorListScreen> {
       ));
       slivers.add(SliverList(
         delegate: SliverChildBuilderDelegate(
-          (context, index) => DoorItem(door: items[index]),
+          (context, index) => DoorItem(
+            door: items[index],
+            onUnlock: () {
+              showCountdownSnackBar(context, 'Unlocked ${items[index].name}',
+                  seconds: 5);
+            },
+          ),
           childCount: items.length,
         ),
       ));

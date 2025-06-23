@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/api_exception.dart' show ApiException;
+import 'package:flutter/foundation.dart';
+
 class AuthData {
   final String accessToken;
   final int tenantId;
@@ -39,14 +42,38 @@ class AuthService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Login failed: ${response.reasonPhrase}');
+      debugPrint('Login failed response: ${response.body}');
+      debugPrint('Content-Type: ${response.headers['content-type']}');
+
+      Map<String, dynamic> decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (e) {
+        debugPrint('❌ Failed to decode JSON error response: $e');
+        throw ApiException('unknown', 'Login failed.\n${response.body}');
+      }
+
+      final error = decoded['error'] ?? '';
+      final description = decoded['error_description'] ?? 'Login failed';
+
+      if (error == 'invalid_grant' &&
+          description.toLowerCase().contains('locked')) {
+        throw ApiException('account_locked',
+            'Your account is locked. Please contact support.');
+      } else if (error == 'invalid_grant' &&
+          description.toLowerCase().contains('incorrect')) {
+        throw ApiException('wrong_password',
+            'The email or password you entered is incorrect.');
+      }
+
+      throw ApiException('login_failed', description);
     }
 
     final data = jsonDecode(response.body);
 
     final tenantRolesJson = data['tenantRoles'];
     if (tenantRolesJson == null || tenantRolesJson.isEmpty) {
-      throw Exception('Tenant roles not found');
+      throw ApiException('no_tenant', 'Tenant roles not found');
     }
 
     final tenantRoles = jsonDecode(tenantRolesJson)[0];
@@ -56,7 +83,7 @@ class AuthService {
         data['access_token'] == null ||
         data['userId'] == null ||
         data['userName'] == null) {
-      throw Exception('Incomplete login response');
+      throw ApiException('invalid_response', 'Incomplete login response');
     }
 
     final displayName = _capitalizeUsername(data['userName']);
