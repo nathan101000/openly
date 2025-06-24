@@ -6,12 +6,14 @@ import '../providers/auth_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../services/door_service.dart';
 
+enum UnlockMode { none, pulse, timed }
+
 class DoorItem extends StatefulWidget {
   final Door door;
-  final VoidCallback? onUnlock; // Add this line
+  final void Function({UnlockMode? mode, int? duration})?
+      onUnlock; // update type
 
-  const DoorItem(
-      {super.key, required this.door, this.onUnlock}); // Update constructor
+  const DoorItem({super.key, required this.door, this.onUnlock});
 
   @override
   State<DoorItem> createState() => _DoorItemState();
@@ -19,15 +21,15 @@ class DoorItem extends StatefulWidget {
 
 class _DoorItemState extends State<DoorItem> {
   bool isUnlocking = false;
-  String unlockedMode = ''; // 'pulse', 'timed', or ''
+  UnlockMode unlockedMode = UnlockMode.none;
 
-  Future<void> _unlock({required bool isPulse}) async {
+  Future<void> _unlock({required bool isPulse, int? customDuration}) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final duration = 5;
+    final duration = isPulse ? 5 : (customDuration ?? 15);
 
     setState(() {
       isUnlocking = true;
-      unlockedMode = isPulse ? 'pulse' : 'timed';
+      unlockedMode = isPulse ? UnlockMode.pulse : UnlockMode.timed;
     });
 
     try {
@@ -38,12 +40,13 @@ class _DoorItemState extends State<DoorItem> {
         isPulse ? 0 : duration,
       );
 
-      // Call the onUnlock callback if provided
       if (widget.onUnlock != null) {
-        widget.onUnlock!();
+        widget.onUnlock!(
+          mode: isPulse ? UnlockMode.pulse : UnlockMode.timed,
+          duration: isPulse ? null : duration,
+        );
       }
 
-      // Keep it unlocked for the duration
       await Future.delayed(Duration(seconds: duration));
     } catch (e) {
       if (mounted) {
@@ -55,7 +58,7 @@ class _DoorItemState extends State<DoorItem> {
       if (mounted) {
         setState(() {
           isUnlocking = false;
-          unlockedMode = '';
+          unlockedMode = UnlockMode.none;
         });
       }
     }
@@ -63,8 +66,6 @@ class _DoorItemState extends State<DoorItem> {
 
   @override
   Widget build(BuildContext context) {
-    final isPulseUnlocked = unlockedMode == 'pulse';
-    final isTimedUnlocked = unlockedMode == 'timed';
     final favorites = Provider.of<FavoritesProvider>(context);
     final isFavorite = favorites.isFavorite(widget.door.id);
 
@@ -79,51 +80,149 @@ class _DoorItemState extends State<DoorItem> {
           widget.door.name,
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        trailing: Wrap(
-          spacing: 8,
+        trailing: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: Icon(
-                isFavorite ? Icons.star : Icons.star_border,
-                color: isFavorite ? Colors.amber : Colors.grey,
-              ),
-              onPressed: () {
-                favorites.toggleFavorite(widget.door.id);
-                showAppSnackBar(
-                  context,
-                  isFavorite ? 'Removed from favorites' : 'Added to favorites',
-                  success: !isFavorite,
-                  backgroundColor: isFavorite ? Colors.grey : null,
-                );
-              },
-            ),
-            Tooltip(
-              message: 'Pulse Unlock',
-              child: IconButton(
-                onPressed: isUnlocking ? null : () => _unlock(isPulse: true),
-                icon: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Icon(
-                    isPulseUnlocked ? Icons.lock_open : Icons.lock,
-                    key: ValueKey(isPulseUnlocked),
-                    color: isPulseUnlocked ? Colors.green : Colors.grey,
+            Wrap(
+              spacing: 8,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    isFavorite ? Icons.star : Icons.star_border,
+                    color: isFavorite ? Colors.amber : Colors.grey,
+                  ),
+                  onPressed: () {
+                    favorites.toggleFavorite(widget.door.id);
+                    showAppSnackBar(
+                      context,
+                      isFavorite
+                          ? 'Removed from favorites'
+                          : 'Added to favorites',
+                      success: !isFavorite,
+                      backgroundColor: isFavorite ? Colors.grey : null,
+                    );
+                  },
+                ),
+                Tooltip(
+                  message: 'Unlock',
+                  child: ElevatedButton.icon(
+                    onPressed: isUnlocking
+                        ? null
+                        : () {
+                            _unlock(isPulse: true);
+                          },
+                    onLongPress: isUnlocking
+                        ? null
+                        : () async {
+                            final result = await showModalBottomSheet<
+                                Map<String, dynamic>>(
+                              context: context,
+                              builder: (ctx) {
+                                int timedDuration = 5; // default to 5 minutes
+                                return StatefulBuilder(
+                                  builder: (context, setModalState) => SafeArea(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Padding(
+                                          padding: EdgeInsets.all(16.0),
+                                          child: Text(
+                                            'Unlock Mode',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        ),
+                                        ListTile(
+                                          leading: const Icon(Icons.flash_on),
+                                          title: const Text('Pulse (5s)'),
+                                          onTap: () => Navigator.pop(
+                                              ctx, {'mode': 'pulse'}),
+                                        ),
+                                        ListTile(
+                                          leading: const Icon(Icons.timer),
+                                          title: Row(
+                                            children: [
+                                              const Text('Timed'),
+                                              const SizedBox(width: 8),
+                                              Text('(${timedDuration} min)'),
+                                            ],
+                                          ),
+                                          subtitle: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const SizedBox(height: 8),
+                                              Slider(
+                                                value: timedDuration.toDouble(),
+                                                min: 1,
+                                                max: 60,
+                                                divisions: 59,
+                                                label: '${timedDuration} min',
+                                                onChanged: (v) =>
+                                                    setModalState(() {
+                                                  timedDuration = v.round();
+                                                }),
+                                              ),
+                                              const Text(
+                                                'Select duration (1-60 minutes)',
+                                                style: TextStyle(fontSize: 12),
+                                              ),
+                                            ],
+                                          ),
+                                          onTap: () => Navigator.pop(ctx, {
+                                            'mode': 'timed',
+                                            'duration': timedDuration
+                                          }),
+                                        ),
+                                        const Divider(),
+                                        ListTile(
+                                          leading: const Icon(Icons.cancel),
+                                          title: const Text('Cancel'),
+                                          onTap: () => Navigator.pop(ctx, null),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                            if (result != null && result['mode'] == 'pulse') {
+                              _unlock(isPulse: true);
+                            } else if (result != null &&
+                                result['mode'] == 'timed') {
+                              _unlock(
+                                  isPulse: false,
+                                  customDuration: result['duration']);
+                            }
+                          },
+                    icon: isUnlocking
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.green),
+                            ),
+                          )
+                        : AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: Icon(
+                              isUnlocking ? Icons.lock_open : Icons.lock,
+                              key: ValueKey(isUnlocking),
+                              color: isUnlocking ? Colors.green : Colors.grey,
+                            ),
+                          ),
+                    label: const Text('Unlock'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isUnlocking ? Colors.green[100] : null,
+                      foregroundColor: isUnlocking ? Colors.green : null,
+                    ),
                   ),
                 ),
-              ),
-            ),
-            Tooltip(
-              message: 'Timed Unlock',
-              child: IconButton(
-                onPressed: isUnlocking ? null : () => _unlock(isPulse: false),
-                icon: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Icon(
-                    isTimedUnlocked ? Icons.lock_open : Icons.key,
-                    key: ValueKey(isTimedUnlocked),
-                    color: isTimedUnlocked ? Colors.green : Colors.grey,
-                  ),
-                ),
-              ),
+              ],
             ),
           ],
         ),
