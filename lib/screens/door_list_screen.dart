@@ -137,9 +137,17 @@ class _DoorListScreenState extends State<DoorListScreen> {
         delegate: SliverChildBuilderDelegate(
           (context, index) => DoorItem(
             door: items[index],
-            onUnlock: () {
-              showCountdownSnackBar(context, 'Unlocked ${items[index].name}',
-                  seconds: 5);
+            onUnlock: ({UnlockMode? mode, int? duration}) {
+              if (mode == UnlockMode.pulse) {
+                showCountdownSnackBar(context, 'Unlocked ${items[index].name}',
+                    seconds: 5);
+              } else if (mode == UnlockMode.timed) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text(
+                          'Unlocked ${items[index].name} for $duration min')),
+                );
+              }
             },
           ),
           childCount: items.length,
