@@ -55,3 +55,4 @@ app.*.map.json
 
 .metadata
 analysis_options.yaml
+.vscode/launch.json
