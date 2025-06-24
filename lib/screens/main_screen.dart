@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import 'favorites_screen.dart';
 import 'profile_screen.dart';
+import 'camera_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -18,12 +19,14 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = const [
     DoorListScreen(),
     FavoritesScreen(),
+    CameraScreen(),
     ProfileScreen(),
   ];
 
   final List<String> _titles = [
     'Doors',
     'Favorites',
+    'Camera',
     'Profile',
   ];
 
@@ -67,26 +70,26 @@ class _MainScreenState extends State<MainScreen> {
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
           child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _titles[_currentIndex],
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            IconButton(
-              icon: Icon(
-                switch (themeProvider.themeMode) {
-                  ThemeMode.light => Icons.light_mode,
-                  ThemeMode.dark => Icons.dark_mode,
-                  ThemeMode.system => Icons.brightness_auto,
-                },
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _titles[_currentIndex],
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
-              onPressed: () => themeProvider.toggleTheme(),
-              tooltip: 'Toggle theme',
-            ),
-          ],
+              IconButton(
+                icon: Icon(
+                  switch (themeProvider.themeMode) {
+                    ThemeMode.light => Icons.light_mode,
+                    ThemeMode.dark => Icons.dark_mode,
+                    ThemeMode.system => Icons.brightness_auto,
+                  },
+                ),
+                onPressed: () => themeProvider.toggleTheme(),
+                tooltip: 'Toggle theme',
+              ),
+            ],
           ),
         ),
         elevation: 1,
@@ -117,12 +120,12 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: useRail
           ? null
           : NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
-        },
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (index) {
+                setState(() => _currentIndex = index);
+              },
               destinations: _destinations,
-      ),
+            ),
     );
   }
 }
