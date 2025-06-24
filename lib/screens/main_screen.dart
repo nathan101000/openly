@@ -27,14 +27,46 @@ class _MainScreenState extends State<MainScreen> {
     'Profile',
   ];
 
+  final List<NavigationDestination> _destinations = const [
+    NavigationDestination(
+      icon: Icon(Icons.door_front_door_outlined),
+      selectedIcon: Icon(Icons.door_front_door),
+      label: 'Doors',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.star_border),
+      selectedIcon: Icon(Icons.star),
+      label: 'Favorites',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.person_outline),
+      selectedIcon: Icon(Icons.person),
+      label: 'Profile',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final useRail = screenWidth >= 1000;
+
+    final bodyContent = Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: IndexedStack(
+          index: _currentIndex,
+          children: _screens,
+        ),
+      ),
+    );
 
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Row(
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
@@ -55,37 +87,41 @@ class _MainScreenState extends State<MainScreen> {
               tooltip: 'Toggle theme',
             ),
           ],
+          ),
         ),
         elevation: 1,
         backgroundColor: Theme.of(context).colorScheme.surface,
         surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: NavigationBar(
+      body: useRail
+          ? Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _currentIndex,
+                  onDestinationSelected: (i) =>
+                      setState(() => _currentIndex = i),
+                  labelType: NavigationRailLabelType.all,
+                  destinations: _destinations
+                      .map((d) => NavigationRailDestination(
+                            icon: d.icon,
+                            selectedIcon: d.selectedIcon ?? d.icon,
+                            label: Text(d.label),
+                          ))
+                      .toList(),
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(child: bodyContent),
+              ],
+            )
+          : bodyContent,
+      bottomNavigationBar: useRail
+          ? null
+          : NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
           setState(() => _currentIndex = index);
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.door_front_door_outlined),
-            selectedIcon: Icon(Icons.door_front_door),
-            label: 'Doors',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.star_border),
-            selectedIcon: Icon(Icons.star),
-            label: 'Favorites',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+              destinations: _destinations,
       ),
     );
   }
