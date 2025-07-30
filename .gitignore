@@ -56,3 +56,8 @@ app.*.map.json
 .metadata
 analysis_options.yaml
 .vscode/launch.json
+
+# APK Signing reelated
+/android/key.properties
+/android/app/openly-key.jks
+openly-key.jks

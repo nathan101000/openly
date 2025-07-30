@@ -9,7 +9,7 @@ on:
       - '.gitignore'
   pull_request:
     branches: [main]
-  workflow_dispatch:  # 👈 Enables manual run
+  workflow_dispatch:
 
 jobs:
   build:
@@ -25,9 +25,18 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Check flutter doctor
+      - name: Flutter doctor
         run: flutter doctor -v
-      - name: Build APK
+
+      - name: Decode and save keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/openly-key.jks
+          echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/android/app/openly-key.jks" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "KEY_ALIAS_PASSWORD=${{ secrets.KEY_ALIAS_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: Build APK (signed)
         run: flutter build apk --release
 
       - name: Upload APK
