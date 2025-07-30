@@ -13,12 +13,12 @@ class AuthData {
   final String displayName;
 
   AuthData(
-    this.accessToken,
-    this.tenantId,
-    this.userId,
-    this.userName,
-    this.displayName,
-  );
+      this.accessToken,
+      this.tenantId,
+      this.userId,
+      this.userName,
+      this.displayName,
+      );
 }
 
 class AuthService {
@@ -27,6 +27,7 @@ class AuthService {
   static const _userIdKey = 'user_id';
   static const _userNameKey = 'user_name';
   static const _displayNameKey = 'display_name';
+  static const _expiryKey = 'token_expiry'; // Added expiry key
 
   static Future<AuthData> login(String email, String password) async {
     final body = {
@@ -79,6 +80,13 @@ class AuthService {
     final tenantRoles = jsonDecode(tenantRolesJson)[0];
     final tenantId = tenantRoles['tenantId'];
 
+    // Extract expires_in and calculate expiry time
+    final expiresIn = data['expires_in'];
+    if (expiresIn == null || expiresIn is! int) {
+      throw ApiException('invalid_response', 'Missing or invalid expires_in');
+    }
+    final expiryDateTime = DateTime.now().add(Duration(seconds: expiresIn));
+
     if (tenantId == null ||
         data['access_token'] == null ||
         data['userId'] == null ||
@@ -102,6 +110,7 @@ class AuthService {
     await prefs.setString(_userIdKey, auth.userId);
     await prefs.setString(_userNameKey, auth.userName);
     await prefs.setString(_displayNameKey, auth.displayName);
+    await prefs.setString(_expiryKey, expiryDateTime.toIso8601String()); // Store expiry time
 
     return auth;
   }
@@ -113,6 +122,20 @@ class AuthService {
     final userId = prefs.getString(_userIdKey);
     final userName = prefs.getString(_userNameKey);
     final displayName = prefs.getString(_displayNameKey);
+    final expiryString = prefs.getString(_expiryKey); // Load expiry time string
+
+    if (expiryString == null) {
+      // If no expiry time is stored, treat as expired
+      await clearAuth();
+      return null;
+    }
+
+    final expiryDateTime = DateTime.tryParse(expiryString);
+    if (expiryDateTime == null || expiryDateTime.isBefore(DateTime.now())) {
+      // If expiry time is invalid or in the past, clear auth and return null
+      await clearAuth();
+      return null;
+    }
 
     if (token != null &&
         tenant != null &&
@@ -122,6 +145,9 @@ class AuthService {
       return AuthData(token, tenant, userId, userName, displayName);
     }
 
+    // If other data is missing (should ideally not happen if expiry is valid),
+    // clear auth as a precaution.
+    await clearAuth();
     return null;
   }
 
@@ -132,6 +158,7 @@ class AuthService {
     await prefs.remove(_userIdKey);
     await prefs.remove(_userNameKey);
     await prefs.remove(_displayNameKey);
+    await prefs.remove(_expiryKey); // Remove expiry time
   }
 
   static String _capitalizeUsername(String email) {
