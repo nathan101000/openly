@@ -5,6 +5,7 @@ import 'providers/auth_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
+import 'services/update_service.dart';
 import 'util.dart';
 import 'theme.dart';
 
@@ -36,11 +37,15 @@ class AppEntryPoint extends StatefulWidget {
 }
 
 class _AppEntryPointState extends State<AppEntryPoint> {
+  bool _updateChecked = false;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(() =>
-        Provider.of<AuthProvider>(context, listen: false).loadAuthState());
+    Future.microtask(() async {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.loadAuthState();
+    });
   }
 
   @override
@@ -49,22 +54,31 @@ class _AppEntryPointState extends State<AppEntryPoint> {
     final textTheme = createTextTheme(context, "Inter", "Inter");
     final theme = MaterialTheme(textTheme, themeProvider.seedColor);
 
-    return Consumer<AuthProvider>(
-      builder: (context, auth, _) {
-        return MaterialApp(
-          title: 'Openly',
-          themeMode: themeProvider.themeMode,
-          theme: theme.light(),
-          darkTheme: theme.dark(),
-          home: auth.isChecking
-              ? const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                )
-              : auth.isAuthenticated
-                  ? const MainScreen() // AppBar handled here
-                  : const LoginScreen(),
-        );
-      },
+    return MaterialApp(
+      title: 'Openly',
+      themeMode: themeProvider.themeMode,
+      theme: theme.light(),
+      darkTheme: theme.dark(),
+      home: Consumer<AuthProvider>(
+        builder: (context, auth, _) {
+          if (!_updateChecked && auth.isAuthenticated) {
+            _updateChecked = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              UpdateService.checkForUpdates(context);
+            });
+          }
+
+          if (auth.isChecking) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          } else {
+            return auth.isAuthenticated
+                ? const MainScreen()
+                : const LoginScreen();
+          }
+        },
+      ),
     );
   }
 }
