@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/nathan101000/openly/compare/v1.0.0...v1.1.0) (2025-08-04)
+
+
+### Features
+
+* **update:** add in-app OTA update support with GitHub release integration ([ceb8227](https://github.com/nathan101000/openly/commit/ceb82274ee72307ca8b22fa7cc589d988877f14f))
+
 # 1.0.0 (2025-08-04)
 
 
