@@ -1,3 +1,4 @@
+[![Build Flutter APK](https://github.com/nathan101000/openly/actions/workflows/build_apk.yml/badge.svg)](https://github.com/nathan101000/openly/actions/workflows/build_apk.yml)
 # 🚪 Openly – Smart Door Access App
 
 Openly is a modern Flutter app that allows users to securely access and control doors. It features token-based authentication, animated door unlocking, and persistent user profiles, all integrated through a clean, user-friendly UI.
