@@ -3,23 +3,58 @@
   "version": "0.0.0",
   "private": true,
   "devDependencies": {
-    "semantic-release": "^22.0.0",
     "@semantic-release/changelog": "^6.0.0",
+    "@semantic-release/commit-analyzer": "^10.0.0",
     "@semantic-release/git": "^10.0.0",
     "@semantic-release/github": "^9.0.0",
-    "@semantic-release/commit-analyzer": "^10.0.0",
-    "@semantic-release/release-notes-generator": "^12.0.0"
+    "@semantic-release/release-notes-generator": "^12.0.0",
+    "semantic-release": "24.1.0",
+    "semantic-release-export-data": "^1.1.1",
+    "semantic-release-pub": "^0.10.15"
   },
   "release": {
     "branches": [
       "main"
     ],
     "plugins": [
+      [
+        "semantic-release-export-data"
+      ],
+      [
+        "semantic-release-pub",
+        {
+          "cli": "flutter",
+          "publishPub": false,
+          "updateBuildNumber": true,
+          "buildNumberSource": "env",
+          "buildNumberEnvVar": "GITHUB_RUN_NUMBER"
+        }
+      ],
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
       "@semantic-release/changelog",
-      "@semantic-release/git",
-      "@semantic-release/github"
+      [
+        "@semantic-release/git",
+        {
+          "assets": [
+            "CHANGELOG.md",
+            "package.json",
+            "pubspec.yaml"
+          ],
+          "message": "chore(release): ${nextRelease.version} [skip ci]"
+        }
+      ],
+      [
+        "@semantic-release/github",
+        {
+          "assets": [
+            {
+              "path": "build/app/outputs/flutter-apk/openly-v*.apk",
+              "label": "Android APK (Release)"
+            }
+          ]
+        }
+      ]
     ]
   }
 }

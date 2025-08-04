@@ -4,29 +4,54 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - '.github/workflows/**'
-      - 'README.md'
-      - '.gitignore'
+      - ".github/workflows/**"
+      - "README.md"
+      - ".gitignore"
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  build:
+  get-next-version:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
-
-      - uses: subosito/flutter-action@v2
+      - uses: actions/setup-node@v3
         with:
-          flutter-version: '3.29.3'
+          node-version: 20
+      - run: npm ci
+      - run: npx semantic-release --dry-run
+        id: get-next-version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      new-release-published: ${{ steps.get-next-version.outputs.new-release-published }}
+      new-release-version: ${{ steps.get-next-version.outputs.new-release-version }}
+      new-release-git-tag: ${{ steps.get-next-version.outputs.new-release-git-tag }}
 
-      - name: Install dependencies
+  build_and_release:
+    runs-on: ubuntu-latest
+    needs: get-next-version
+    if: needs.get-next-version.outputs.new-release-published == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.3"
+
+      - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Flutter doctor
-        run: flutter doctor -v
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Node dependencies
+        run: npm ci
 
       - name: Decode and save keystore
         run: |
@@ -39,8 +64,17 @@ jobs:
       - name: Build APK (signed)
         run: flutter build apk --release
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+      - name: Rename APK with version and build number
+        run: |
+          VERSION="${{ needs.get-next-version.outputs.new-release-version }}"
+          BUILD_NUMBER=${{ github.run_number }}
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/flutter-apk/openly-v${VERSION}+${BUILD_NUMBER}.apk
+
+      - name: Export GITHUB_RUN_NUMBER
+        run: echo "GITHUB_RUN_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
