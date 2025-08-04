@@ -1,6 +1,18 @@
 # 1.0.0 (2025-08-04)
 
 
+## 🚀 Initial Release
+
+Openly is a smart door access app built with Flutter. This first stable release includes:
+
+- 🔐 **Authentication system** with local biometric support  
+- 🧭 **Responsive navigation** using `NavigationRail`  
+- 🕒 **Timed door unlock** functionality with feedback animations  
+- 🎨 **Material 3 expressive design**  
+- 🧑‍💼 **User profile and settings**  
+- ⚙️ Robust error handling and token expiry management
+
+
 ### Bug Fixes
 
 * add .vscode/launch.json to .gitignore ([7937d5f](https://github.com/nathan101000/openly/commit/7937d5f1264493bd7824a5b986fcc86ad5a14cf0))
