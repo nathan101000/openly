@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:openly/screens/door_list_screen.dart';
-import 'package:provider/provider.dart';
-import '../providers/theme_provider.dart';
 import 'favorites_screen.dart';
-import 'profile_screen.dart';
+import 'settings_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -18,13 +16,13 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = const [
     DoorListScreen(),
     FavoritesScreen(),
-    ProfileScreen(),
+    SettingsScreen(),
   ];
 
   final List<String> _titles = [
     'Doors',
     'Favorites',
-    'Profile',
+    'Settings',
   ];
 
   final List<NavigationDestination> _destinations = const [
@@ -39,15 +37,14 @@ class _MainScreenState extends State<MainScreen> {
       label: 'Favorites',
     ),
     NavigationDestination(
-      icon: Icon(Icons.person_outline),
-      selectedIcon: Icon(Icons.person),
-      label: 'Profile',
+      icon: Icon(Icons.settings_outlined),
+      selectedIcon: Icon(Icons.settings),
+      label: 'Settings',
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final useRail = screenWidth >= 1000;
 
@@ -64,30 +61,11 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _titles[_currentIndex],
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            IconButton(
-              icon: Icon(
-                switch (themeProvider.themeMode) {
-                  ThemeMode.light => Icons.light_mode,
-                  ThemeMode.dark => Icons.dark_mode,
-                  ThemeMode.system => Icons.brightness_auto,
-                },
+        title: Text(
+          _titles[_currentIndex],
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-              onPressed: () => themeProvider.toggleTheme(),
-              tooltip: 'Toggle theme',
-            ),
-          ],
-          ),
         ),
         elevation: 1,
         backgroundColor: Theme.of(context).colorScheme.surface,
@@ -117,12 +95,12 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: useRail
           ? null
           : NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
-        },
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (index) {
+                setState(() => _currentIndex = index);
+              },
               destinations: _destinations,
-      ),
+            ),
     );
   }
 }

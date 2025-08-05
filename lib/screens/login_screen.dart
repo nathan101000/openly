@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import '../models/api_exception.dart';
 import '../providers/auth_provider.dart';
-import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/snackbar.dart';
 
@@ -96,23 +95,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Door Access Login'),
-        actions: [
-          IconButton(
-            icon: Icon(
-              themeProvider.themeMode == ThemeMode.light
-                  ? Icons.dark_mode
-                  : themeProvider.themeMode == ThemeMode.dark
-                      ? Icons.brightness_auto
-                      : Icons.light_mode,
-            ),
-            onPressed: () => themeProvider.toggleTheme(),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(32),
