@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/nathan101000/openly/compare/v1.1.1...v1.2.0) (2025-08-05)
+
+
+### Features
+
+* **profile:** add manual update check button with feedback dialog ([7bfbda4](https://github.com/nathan101000/openly/commit/7bfbda42f9beb4caacc383a4d83a32428eaf6386))
+
 ## [1.1.1](https://github.com/nathan101000/openly/compare/v1.1.0...v1.1.1) (2025-08-05)
 
 
