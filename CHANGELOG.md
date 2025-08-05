@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/nathan101000/openly/compare/v1.1.0...v1.1.1) (2025-08-05)
+
+
+### Bug Fixes
+
+* **android:** disable minify and shrinkResources in release build ([fe219d0](https://github.com/nathan101000/openly/commit/fe219d0e7a2adca7397b131083ac6305e65ba3ee))
+
 # [1.1.0](https://github.com/nathan101000/openly/compare/v1.0.0...v1.1.0) (2025-08-04)
 
 
