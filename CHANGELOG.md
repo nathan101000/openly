@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/nathan101000/openly/compare/v1.2.0...v1.3.0) (2025-08-05)
+
+
+### Features
+
+* **settings:** replace profile screen with redesigned settings screen ([a660308](https://github.com/nathan101000/openly/commit/a6603087bc26a1c6e7e0460ff608df05979f0dc3))
+
 # [1.2.0](https://github.com/nathan101000/openly/compare/v1.1.1...v1.2.0) (2025-08-05)
 
 
