@@ -8,7 +8,8 @@ import 'package:permission_handler/permission_handler.dart';
 class UpdateService {
   static const String githubRepo = 'nathan101000/openly';
 
-  static Future<void> checkForUpdates(BuildContext context) async {
+  static Future<void> checkForUpdates(BuildContext context,
+      {bool showNoUpdateDialog = false}) async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
@@ -48,6 +49,9 @@ class UpdateService {
         _showUpdateSheet(context, apkUrl, latestVersion, apkName);
       } else {
         debugPrint('App is up to date.');
+        if (showNoUpdateDialog) {
+          _showNoUpdateDialog(context, currentVersion);
+        }
       }
     } catch (e) {
       debugPrint('Update check failed: $e');
@@ -240,5 +244,21 @@ class UpdateService {
     if (!status.isGranted) {
       await Permission.requestInstallPackages.request();
     }
+  }
+
+  static void _showNoUpdateDialog(BuildContext context, String currentVersion) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('App is Up to Date'),
+        content: Text('You are running the latest version ($currentVersion).'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 }

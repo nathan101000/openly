@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/update_service.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -76,6 +77,16 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.system_update_alt),
+                    label: const Text('Check for Updates'),
+                    onPressed: () => UpdateService.checkForUpdates(context,
+                        showNoUpdateDialog: true),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
