@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/nathan101000/openly/compare/v1.3.0...v1.4.0) (2025-08-06)
+
+
+### Features
+
+* **ui:** add animated splash screen with fingerprint scan and unlock sequence ([a7730cf](https://github.com/nathan101000/openly/commit/a7730cf5598a5bfa40f09b5e9d4390c4708d3fda))
+
 # [1.3.0](https://github.com/nathan101000/openly/compare/v1.2.0...v1.3.0) (2025-08-05)
 
 
