@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/update_service.dart';
+import 'theme_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -40,68 +41,30 @@ class SettingsScreen extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // Appearance Section
+// Appearance Section
               _buildSectionHeader(context, 'Appearance'),
               Card(
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: Icon(
-                        switch (theme.themeMode) {
-                          ThemeMode.light => Icons.light_mode,
-                          ThemeMode.dark => Icons.dark_mode,
-                          ThemeMode.system => Icons.brightness_auto,
-                        },
-                      ),
-                      title: const Text('Theme Mode'),
-                      subtitle: Text(
-                        switch (theme.themeMode) {
-                          ThemeMode.light => 'Light mode',
-                          ThemeMode.dark => 'Dark mode',
-                          ThemeMode.system => 'System default',
-                        },
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () => theme.toggleTheme(),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: theme.seedColor,
+                    child: Icon(
+                      _getThemeModeIcon(theme.appThemeMode),
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.palette),
-                      title: const Text('Theme Color'),
-                      subtitle: const Text('Choose your preferred color'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (final color in [
-                            const Color(0xff4b5c92),
-                            Colors.teal,
-                            Colors.deepOrange,
-                            Colors.purple
-                          ])
-                            GestureDetector(
-                              onTap: () => theme.updateSeedColor(color),
-                              child: Container(
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 2),
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: theme.seedColor.toARGB32() ==
-                                            color.toARGB32()
-                                        ? Colors.black
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                  ),
+                  title: const Text('Appearance'),
+                  subtitle: Text(
+                    '${_getThemeModeDisplayName(theme.appThemeMode)} • '
+                    '${theme.themeSource == ThemeSource.system ? 'System color' : theme.themeSource == ThemeSource.app ? 'App default' : 'Custom color'}',
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const ThemeSettingsScreen(),
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
 
@@ -150,6 +113,36 @@ class SettingsScreen extends StatelessWidget {
         style: Theme.of(context).textTheme.titleMedium,
       ),
     );
+  }
+
+  String _getThemeModeDisplayName(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return 'Light';
+      case AppThemeMode.dark:
+        return 'Dark';
+      case AppThemeMode.black:
+        return 'Black';
+      case AppThemeMode.system:
+        return 'System';
+      case AppThemeMode.systemBlack:
+        return 'System (Black)';
+    }
+  }
+
+  IconData _getThemeModeIcon(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return Icons.light_mode;
+      case AppThemeMode.dark:
+        return Icons.dark_mode;
+      case AppThemeMode.black:
+        return Icons.brightness_2;
+      case AppThemeMode.system:
+        return Icons.brightness_auto;
+      case AppThemeMode.systemBlack:
+        return Icons.brightness_4;
+    }
   }
 
   void _confirmLogout(BuildContext context, AuthProvider auth) {

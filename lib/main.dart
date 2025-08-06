@@ -6,8 +6,6 @@ import 'providers/favorites_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/update_service.dart';
-import 'util.dart';
-import 'theme.dart';
 
 void main() {
   runApp(const Openly());
@@ -51,14 +49,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final textTheme = createTextTheme(context, "Inter", "Inter");
-    final theme = MaterialTheme(textTheme, themeProvider.seedColor);
 
     return MaterialApp(
       title: 'Openly',
       themeMode: themeProvider.themeMode,
-      theme: theme.light(),
-      darkTheme: theme.dark(),
+      theme: themeProvider.lightTheme,
+      darkTheme: themeProvider.darkTheme,
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           if (!_updateChecked && auth.isAuthenticated) {
