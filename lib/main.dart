@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/favorites_provider.dart';
+
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
+import 'screens/splash_screen.dart'; // Your animated splash screen
+
 import 'services/update_service.dart';
 import 'util.dart';
 import 'theme.dart';
@@ -24,11 +28,59 @@ class Openly extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
       ],
-      child: const AppEntryPoint(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          final textTheme = createTextTheme(context, "Inter", "Inter");
+          final theme = MaterialTheme(textTheme, themeProvider.seedColor);
+
+          return MaterialApp(
+            title: 'Openly',
+            themeMode: themeProvider.themeMode,
+            theme: theme.light(),
+            darkTheme: theme.dark(),
+            debugShowCheckedModeBanner: false,
+            home:
+                const SplashWrapper(), // 👈 Splash screen runs inside MaterialApp
+          );
+        },
+      ),
     );
   }
 }
 
+/// Shows SplashScreen briefly, then loads the real app
+class SplashWrapper extends StatefulWidget {
+  const SplashWrapper({super.key});
+
+  @override
+  State<SplashWrapper> createState() => _SplashWrapperState();
+}
+
+class _SplashWrapperState extends State<SplashWrapper> {
+  bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _startSplashDelay();
+  }
+
+  void _startSplashDelay() async {
+    await Future.delayed(const Duration(milliseconds: 4200));
+    if (mounted) {
+      setState(() {
+        _showSplash = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _showSplash ? const SplashScreen() : const AppEntryPoint();
+  }
+}
+
+/// The actual app logic — loads auth state, then shows login or main
 class AppEntryPoint extends StatefulWidget {
   const AppEntryPoint({super.key});
 
@@ -50,35 +102,21 @@ class _AppEntryPointState extends State<AppEntryPoint> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final textTheme = createTextTheme(context, "Inter", "Inter");
-    final theme = MaterialTheme(textTheme, themeProvider.seedColor);
+    final auth = Provider.of<AuthProvider>(context);
 
-    return MaterialApp(
-      title: 'Openly',
-      themeMode: themeProvider.themeMode,
-      theme: theme.light(),
-      darkTheme: theme.dark(),
-      home: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          if (!_updateChecked && auth.isAuthenticated) {
-            _updateChecked = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              UpdateService.checkForUpdates(context);
-            });
-          }
+    if (!_updateChecked && auth.isAuthenticated) {
+      _updateChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        UpdateService.checkForUpdates(context);
+      });
+    }
 
-          if (auth.isChecking) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          } else {
-            return auth.isAuthenticated
-                ? const MainScreen()
-                : const LoginScreen();
-          }
-        },
-      ),
-    );
+    if (auth.isChecking) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return auth.isAuthenticated ? const MainScreen() : const LoginScreen();
   }
 }
