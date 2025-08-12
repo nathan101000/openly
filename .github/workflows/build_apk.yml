@@ -62,7 +62,10 @@ jobs:
           echo "KEY_ALIAS_PASSWORD=${{ secrets.KEY_ALIAS_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Build APK (signed)
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release \
+            --build-name ${{ needs.get-next-version.outputs.new-release-version }} \
+            --build-number ${{ github.run_number }}
 
       - name: Rename APK with version and build number
         run: |
@@ -70,9 +73,7 @@ jobs:
           BUILD_NUMBER=${{ github.run_number }}
           mv build/app/outputs/flutter-apk/app-release.apk \
             build/app/outputs/flutter-apk/openly-v${VERSION}+${BUILD_NUMBER}.apk
-
-      - name: Export GITHUB_RUN_NUMBER
-        run: echo "GITHUB_RUN_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "RENAMED_APK_PATH=build/app/outputs/flutter-apk/openly-v${VERSION}+${BUILD_NUMBER}.apk" >> $GITHUB_ENV
 
       - name: Run semantic-release
         env:
