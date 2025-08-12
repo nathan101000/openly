@@ -12,7 +12,8 @@ class UpdateService {
       {bool showNoUpdateDialog = false}) async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version;
+      final currentVersionName = packageInfo.version;
+      final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
 
       final response = await http.get(
         Uri.parse('https://api.github.com/repos/$githubRepo/releases/latest'),
@@ -27,30 +28,41 @@ class UpdateService {
       }
 
       final data = json.decode(response.body);
-      final latestVersion = data['tag_name']?.replaceFirst('v', '') ?? '';
+      final latestVersionName = data['tag_name']?.replaceFirst('v', '') ?? '';
       final assets = data['assets'] as List<dynamic>;
 
       final apkAsset = assets.firstWhere(
         (asset) =>
             asset['name'] != null &&
-            asset['name'].toString().toLowerCase().endsWith('.apk'),
+            asset['name'].toString().toLowerCase().endsWith('.apk') &&
+            asset['name'].toString().contains('+'), // Ensures build number is likely in name
         orElse: () => null,
       );
 
       if (apkAsset == null) {
-        debugPrint('APK asset not found in release.');
+        debugPrint('APK asset not found in release (or name does not contain \'+\').');
         return;
       }
 
       final apkUrl = apkAsset['browser_download_url'];
-      final apkName = apkAsset['name'];
+      final apkName = apkAsset['name'] as String;
 
-      if (_isNewer(latestVersion, currentVersion)) {
-        _showUpdateSheet(context, apkUrl, latestVersion, apkName);
+      int latestBuildNumber = 0;
+      // Expected format: prefix-vX.Y.Z+BUILD.apk or vX.Y.Z+BUILD.apk
+      final apkNamePattern = RegExp(r'v?\d+\.\d+\.\d+\+(\d+)\.apk$', caseSensitive: false);
+      final match = apkNamePattern.firstMatch(apkName);
+      if (match != null && match.groupCount >= 1) {
+        latestBuildNumber = int.tryParse(match.group(1)!) ?? 0;
       } else {
-        debugPrint('App is up to date.');
+        debugPrint('Could not parse build number from APK name: $apkName. Update check may rely on version name only.');
+      }
+
+      if (_isNewer(latestVersionName, currentVersionName, latestBuildNumber, currentBuildNumber)) {
+        _showUpdateSheet(context, apkUrl, latestVersionName, apkName);
+      } else {
+        debugPrint('App is up to date. Current: v$currentVersionName ($currentBuildNumber), Latest: v$latestVersionName ($latestBuildNumber)');
         if (showNoUpdateDialog) {
-          _showNoUpdateDialog(context, currentVersion);
+          _showNoUpdateDialog(context, currentVersionName);
         }
       }
     } catch (e) {
@@ -58,11 +70,22 @@ class UpdateService {
     }
   }
 
-  static bool _isNewer(String latest, String current) {
-    final latestParts =
-        latest.split('.').map(int.tryParse).whereType<int>().toList();
-    final currentParts =
-        current.split('.').map(int.tryParse).whereType<int>().toList();
+  static bool _isNewer(
+    String latestVersionName,
+    String currentVersionName,
+    int latestBuildNum,
+    int currentBuildNum,
+  ) {
+    // If we have a valid build number from the release, use it for comparison
+    if (latestBuildNum > 0) {
+      if (latestBuildNum > currentBuildNum) return true;
+      if (latestBuildNum < currentBuildNum) return false;
+      // If build numbers are the same, proceed to version name comparison (e.g. for different release channels with same build number but different patch)
+    }
+
+    // Fallback to version name semantic compare if latestBuildNum is not usable or build numbers are identical
+    final latestParts = latestVersionName.split('.').map(int.tryParse).whereType<int>().toList();
+    final currentParts = currentVersionName.split('.').map(int.tryParse).whereType<int>().toList();
 
     for (int i = 0; i < latestParts.length; i++) {
       if (i >= currentParts.length || latestParts[i] > currentParts[i]) {
@@ -72,13 +95,13 @@ class UpdateService {
         return false;
       }
     }
-    return false;
+    return false; // Version names are also identical or current is newer/same
   }
 
   static void _showUpdateSheet(
     BuildContext context,
     String apkUrl,
-    String version,
+    String version, // This is latestVersionName
     String filename, {
     String? changelog,
   }) {
@@ -91,11 +114,9 @@ class UpdateService {
       ),
       builder: (ctx) {
         return SafeArea(
-            top:
-                false, // keep top spacing off since we want the modal to be flush at the top
+            top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  24, 24, 24, 32), // still keep internal padding
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -187,13 +208,14 @@ class UpdateService {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () async {
-                            Navigator.pop(ctx);
+                            Navigator.pop(ctx); // Close bottom sheet
                             await _requestPermissions();
 
+                            // Show loading dialog
                             showDialog(
                               context: context,
                               barrierDismissible: false,
-                              builder: (_) => const Center(
+                              builder: (dialogContext) => const Center( // Use a different context name for the dialog
                                 child: CircularProgressIndicator(),
                               ),
                             );
@@ -205,10 +227,19 @@ class UpdateService {
                                   .listen((event) {
                                 debugPrint(
                                     'OTA status: ${event.status} => ${event.value}');
-                                // You could also update a progress bar here
+                                if (event.status == OtaStatus.INSTALLING || event.status == OtaStatus.INSTALLING) {
+                                  // Dismiss the loading dialog
+                                  // Use rootNavigator: true if the dialog was shown on the root navigator
+                                  if (Navigator.of(context, rootNavigator: true).canPop()) {
+                                     Navigator.of(context, rootNavigator: true).pop();
+                                  }
+                                }
                               });
                             } catch (e) {
-                              Navigator.pop(context); // Close progress
+                              // Dismiss loading dialog on error
+                              if (Navigator.of(context, rootNavigator: true).canPop()) {
+                                 Navigator.of(context, rootNavigator: true).pop();
+                              }
                               showDialog(
                                 context: context,
                                 builder: (_) => AlertDialog(
@@ -246,12 +277,17 @@ class UpdateService {
     }
   }
 
-  static void _showNoUpdateDialog(BuildContext context, String currentVersion) {
+  static Future<void> _showNoUpdateDialog(
+      BuildContext context, String currentVersion) async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    final buildNumber = packageInfo.buildNumber;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('App is Up to Date'),
-        content: Text('You are running the latest version ($currentVersion).'),
+        content: Text(
+            'You are running the latest version ($currentVersion+$buildNumber).'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
