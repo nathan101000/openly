@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/nathan101000/openly/compare/v1.4.0...v1.4.1) (2025-08-12)
+
+
+### Bug Fixes
+
+* **update:** prevent update loop by prioritizing build number in detection ([6836ad8](https://github.com/nathan101000/openly/commit/6836ad800a803ccedfcd169cddc9667194aac2eb))
+
 # [1.4.0](https://github.com/nathan101000/openly/compare/v1.3.0...v1.4.0) (2025-08-06)
 
 
