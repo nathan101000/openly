@@ -1,0 +1,128 @@
+name: Create Secure Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.5.0)'
+        required: true
+      changelog:
+        description: 'Release changelog (Markdown supported)'
+        required: true
+        default: '- Bug fixes and performance improvements.'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_TOKEN_FOR_PUSH }} # Use a PAT to allow pushing to the repo
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Set up Java and Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x' # Or pin to a specific version
+          channel: 'stable'
+          java-version: '17'
+
+      # IMPORTANT: User must configure these secrets in the repository settings
+      # 1. KEYSTORE_JKS_BASE64: A base64 encoded version of the release keystore.jks file.
+      #    On Linux/macOS, you can generate this with: base64 -w 0 <path_to_your_keystore.jks>
+      # 2. KEY_PROPERTIES: The content of the key.properties file.
+      #    Example content:
+      #    storePassword=your_store_password
+      #    keyPassword=your_key_password
+      #    keyAlias=your_key_alias
+      #    storeFile=/path/to/your/keystore.jks (this will be replaced by the workflow)
+      - name: Decode Keystore and Properties
+        run: |
+          echo "Decoding Keystore..."
+          echo "${{ secrets.KEYSTORE_JKS_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+          echo "Creating key.properties..."
+          echo "${{ secrets.KEY_PROPERTIES }}" > android/key.properties
+          echo "storeFile=upload-keystore.jks" >> android/key.properties
+        env:
+          KEYSTORE_JKS_BASE64: ${{ secrets.KEYSTORE_JKS_BASE64 }}
+          KEY_PROPERTIES: ${{ secrets.KEY_PROPERTIES }}
+
+      - name: Build Flutter App
+        run: flutter build apk --release
+
+      - name: Find Release APK
+        id: find_apk
+        run: |
+          apk_path=$(find build/app/outputs/flutter-apk -name "app-release.apk" -type f)
+          echo "Found APK at $apk_path"
+          echo "::set-output name=path::$apk_path"
+
+      - name: Generate APK Signature (SHA256)
+        id: sign_apk
+        run: |
+          apk_path=${{ steps.find_apk.outputs.path }}
+          signature=$(sha256sum "$apk_path" | awk '{ print $1 }')
+          echo "Generated signature: $signature"
+          echo "::set-output name=signature::$signature"
+
+      - name: Update releases.json
+        id: update_metadata
+        run: |
+          # Get current build number and increment it
+          # This is a simple approach; a more robust solution might use git tags or a dedicated versioning service.
+          current_build_number=$(jq '.[0].buildNumber' releases.json)
+          new_build_number=$((current_build_number + 1))
+
+          # Get the version and changelog from the workflow inputs
+          version="${{ github.event.inputs.version }}"
+          changelog="${{ github.event.inputs.changelog }}"
+
+          # Create the new release entry
+          new_release=$(jq -n \
+            --argjson buildNumber "$new_build_number" \
+            --arg versionName "$version" \
+            --arg changelog "$changelog" \
+            --arg signature "${{ steps.sign_apk.outputs.signature }}" \
+            --arg url "https://github.com/${{ github.repository }}/releases/download/v${version}/openly-v${version}+${new_build_number}.apk" \
+            '{
+              versionName: $versionName,
+              buildNumber: $buildNumber,
+              url: $url,
+              signature: $signature,
+              signature_algorithm: "sha256",
+              changelog: $changelog,
+              isForced: false,
+              rolloutPercentage: 100
+            }')
+
+          # Prepend the new release to the releases.json file
+          jq --argjson new_release "$new_release" '[$new_release] + .' releases.json > tmp_releases.json && mv tmp_releases.json releases.json
+          echo "Successfully updated releases.json"
+
+          # Set outputs for the release step
+          echo "::set-output name=build_number::$new_build_number"
+          echo "::set-output name=apk_name::openly-v${version}+${new_build_number}.apk"
+
+      - name: Commit and Push Metadata
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add releases.json
+          git commit -m "chore(release): Update release metadata for v${{ github.event.inputs.version }}"
+          git push
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ github.event.inputs.version }}"
+          name: "Release v${{ github.event.inputs.version }}"
+          body: "${{ github.event.inputs.changelog }}"
+          files: |
+            ${{ steps.find_apk.outputs.path }} => ${{ steps.update_metadata.outputs.apk_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
