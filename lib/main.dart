@@ -13,7 +13,15 @@ import 'services/update_service.dart';
 import 'util.dart';
 import 'theme.dart';
 
-void main() {
+import 'package:flutter_downloader/flutter_downloader.dart';
+
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:openly/services/update_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FlutterDownloader.initialize(debug: true);
+  UpdateService.initialize();
   runApp(const Openly());
 }
 

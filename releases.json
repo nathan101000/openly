@@ -1,0 +1,12 @@
+[
+  {
+    "versionName": "1.4.2",
+    "buildNumber": 8,
+    "url": "https://github.com/nathan101000/openly/releases/download/v1.4.2/openly-v1.4.2+8.apk",
+    "signature": "placeholder_signature",
+    "signature_algorithm": "sha256",
+    "changelog": "- ✨ **New Feature:** You can now see a changelog in the update dialog!\n- 🐛 **Bug Fix:** Fixed a bug where the app would crash on startup.",
+    "isForced": false,
+    "rolloutPercentage": 100
+  }
+]

@@ -1,298 +1,205 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:ota_update/ota_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UpdateService {
-  static const String githubRepo = 'nathan101000/openly';
+  static const String releasesUrl =
+      'https://raw.githubusercontent.com/nathan101000/openly/main/releases.json';
 
-  static Future<void> checkForUpdates(BuildContext context,
-      {bool showNoUpdateDialog = false}) async {
+  static final ReceivePort _port = ReceivePort();
+
+  static void initialize() {
+    IsolateNameServer.registerPortWithName(
+        _port.sendPort, 'downloader_send_port');
+    _port.listen((dynamic data) {
+      // Handle download progress and status updates
+    });
+
+    FlutterDownloader.registerCallback(downloadCallback);
+  }
+
+  static Future<void> checkForUpdates(BuildContext context) async {
     try {
-      final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersionName = packageInfo.version;
-      final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
-
-      final response = await http.get(
-        Uri.parse('https://api.github.com/repos/$githubRepo/releases/latest'),
-        headers: {
-          'Accept': 'application/vnd.github+json',
-        },
-      );
-
+      final response = await http.get(Uri.parse(releasesUrl));
       if (response.statusCode != 200) {
-        debugPrint('GitHub API failed: ${response.statusCode}');
+        // Handle error
         return;
       }
 
-      final data = json.decode(response.body);
-      final latestVersionName = data['tag_name']?.replaceFirst('v', '') ?? '';
-      final assets = data['assets'] as List<dynamic>;
-
-      final apkAsset = assets.firstWhere(
-        (asset) =>
-            asset['name'] != null &&
-            asset['name'].toString().toLowerCase().endsWith('.apk') &&
-            asset['name'].toString().contains('+'), // Ensures build number is likely in name
-        orElse: () => null,
-      );
-
-      if (apkAsset == null) {
-        debugPrint('APK asset not found in release (or name does not contain \'+\').');
+      final releases = json.decode(response.body) as List<dynamic>;
+      if (releases.isEmpty) {
         return;
       }
 
-      final apkUrl = apkAsset['browser_download_url'];
-      final apkName = apkAsset['name'] as String;
+      final latestRelease = releases.first;
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentBuildNumber = int.parse(packageInfo.buildNumber);
 
-      int latestBuildNumber = 0;
-      // Expected format: prefix-vX.Y.Z+BUILD.apk or vX.Y.Z+BUILD.apk
-      final apkNamePattern = RegExp(r'v?\d+\.\d+\.\d+\+(\d+)\.apk$', caseSensitive: false);
-      final match = apkNamePattern.firstMatch(apkName);
-      if (match != null && match.groupCount >= 1) {
-        latestBuildNumber = int.tryParse(match.group(1)!) ?? 0;
-      } else {
-        debugPrint('Could not parse build number from APK name: $apkName. Update check may rely on version name only.');
-      }
+      debugPrint('TELEMETRY: update_check_success');
+      if (latestRelease['buildNumber'] > currentBuildNumber) {
+        final prefs = await SharedPreferences.getInstance();
+        int userId = prefs.getInt('userId') ?? DateTime.now().millisecondsSinceEpoch;
+        prefs.setInt('userId', userId);
 
-      if (_isNewer(latestVersionName, currentVersionName, latestBuildNumber, currentBuildNumber)) {
-        _showUpdateSheet(context, apkUrl, latestVersionName, apkName);
-      } else {
-        debugPrint('App is up to date. Current: v$currentVersionName ($currentBuildNumber), Latest: v$latestVersionName ($latestBuildNumber)');
-        if (showNoUpdateDialog) {
-          _showNoUpdateDialog(context, currentVersionName);
+        if (userId % 100 < latestRelease['rolloutPercentage']) {
+          _showUpdateSheet(context, latestRelease);
         }
       }
     } catch (e) {
-      debugPrint('Update check failed: $e');
+      debugPrint('TELEMETRY: update_failed - $e');
     }
-  }
-
-  static bool _isNewer(
-    String latestVersionName,
-    String currentVersionName,
-    int latestBuildNum,
-    int currentBuildNum,
-  ) {
-    // If we have a valid build number from the release, use it for comparison
-    if (latestBuildNum > 0) {
-      if (latestBuildNum > currentBuildNum) return true;
-      if (latestBuildNum < currentBuildNum) return false;
-      // If build numbers are the same, proceed to version name comparison (e.g. for different release channels with same build number but different patch)
-    }
-
-    // Fallback to version name semantic compare if latestBuildNum is not usable or build numbers are identical
-    final latestParts = latestVersionName.split('.').map(int.tryParse).whereType<int>().toList();
-    final currentParts = currentVersionName.split('.').map(int.tryParse).whereType<int>().toList();
-
-    for (int i = 0; i < latestParts.length; i++) {
-      if (i >= currentParts.length || latestParts[i] > currentParts[i]) {
-        return true;
-      }
-      if (latestParts[i] < currentParts[i]) {
-        return false;
-      }
-    }
-    return false; // Version names are also identical or current is newer/same
   }
 
   static void _showUpdateSheet(
-    BuildContext context,
-    String apkUrl,
-    String version, // This is latestVersionName
-    String filename, {
-    String? changelog,
-  }) {
+      BuildContext context, Map<String, dynamic> release) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).dialogBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Icon(Icons.system_update_alt_rounded,
-                      size: 56, color: Colors.blueAccent),
-                  const SizedBox(height: 16),
-                  Text(
-                    'New Update Available',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Version $version is ready to install.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(color: Colors.grey[700]),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (changelog != null && changelog.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'What’s new:',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      changelog,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: Colors.black87),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.blue),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Ensure a stable internet connection and sufficient storage before updating.',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: Colors.blue[900]),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text('Later'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            Navigator.pop(ctx); // Close bottom sheet
-                            await _requestPermissions();
-
-                            // Show loading dialog
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (dialogContext) => const Center( // Use a different context name for the dialog
-                                child: CircularProgressIndicator(),
-                              ),
-                            );
-
-                            try {
-                              OtaUpdate()
-                                  .execute(apkUrl,
-                                      destinationFilename: filename)
-                                  .listen((event) {
-                                debugPrint(
-                                    'OTA status: ${event.status} => ${event.value}');
-                                if (event.status == OtaStatus.INSTALLING || event.status == OtaStatus.INSTALLING) {
-                                  // Dismiss the loading dialog
-                                  // Use rootNavigator: true if the dialog was shown on the root navigator
-                                  if (Navigator.of(context, rootNavigator: true).canPop()) {
-                                     Navigator.of(context, rootNavigator: true).pop();
-                                  }
-                                }
-                              });
-                            } catch (e) {
-                              // Dismiss loading dialog on error
-                              if (Navigator.of(context, rootNavigator: true).canPop()) {
-                                 Navigator.of(context, rootNavigator: true).pop();
-                              }
-                              showDialog(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: const Text('Update Failed'),
-                                  content: Text(e.toString()),
-                                  actions: [
-                                    TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('OK')),
-                                  ],
-                                ),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.download),
-                          label: const Text('Update Now'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ));
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return UpdateDialog(release: release);
+          },
+        );
       },
     );
   }
 
-  static Future<void> _requestPermissions() async {
-    final status = await Permission.requestInstallPackages.status;
-    if (!status.isGranted) {
-      await Permission.requestInstallPackages.request();
+  @pragma('vm:entry-point')
+  static void downloadCallback(String id, int status, int progress) {
+    final SendPort? send =
+        IsolateNameServer.lookupPortByName('downloader_send_port');
+    send?.send([id, status, progress]);
+  }
+}
+
+class UpdateDialog extends StatefulWidget {
+  final Map<String, dynamic> release;
+
+  const UpdateDialog({Key? key, required this.release}) : super(key: key);
+
+  @override
+  _UpdateDialogState createState() => _UpdateDialogState();
+}
+
+class _UpdateDialogState extends State<UpdateDialog> {
+  double _progress = 0.0;
+  bool _isDownloading = false;
+  String? _taskId;
+
+  @override
+  void initState() {
+    super.initState();
+    _bindBackgroundIsolate();
+  }
+
+  void _bindBackgroundIsolate() {
+    IsolateNameServer.lookupPortByName('downloader_send_port')
+        ?.listen((dynamic data) {
+      final String id = data[0];
+      final int status = data[1];
+      final int progress = data[2];
+
+      if (_taskId == id) {
+        setState(() {
+          if (status == DownloadTaskStatus.running.value) {
+            _progress = progress / 100.0;
+          } else if (status == DownloadTaskStatus.complete.value) {
+            _isDownloading = false;
+            _verifyAndInstall();
+          } else if (status == DownloadTaskStatus.failed.value) {
+            _isDownloading = false;
+            // Handle download failure
+          }
+        });
+      }
+    });
+  }
+
+  Future<void> _downloadUpdate() async {
+    final localPath =
+        (await getExternalStorageDirectory())!.path + '/Download';
+    final savedDir = Directory(localPath);
+    if (!savedDir.existsSync()) {
+      savedDir.createSync(recursive: true);
+    }
+
+    debugPrint('TELEMETRY: update_download_start');
+    _taskId = await FlutterDownloader.enqueue(
+      url: widget.release['url'],
+      savedDir: localPath,
+      showNotification: true,
+      openFileFromNotification: false, // We will open it manually after verification
+    );
+    setState(() {
+      _isDownloading = true;
+    });
+  }
+
+  Future<void> _verifyAndInstall() async {
+    final localPath =
+        (await getExternalStorageDirectory())!.path + '/Download';
+    final downloadedFilePath = '$localPath/${widget.release['url'].split('/').last}';
+    final file = File(downloadedFilePath);
+
+    if (await file.exists()) {
+      final fileBytes = await file.readAsBytes();
+      final digest = sha256.convert(fileBytes);
+
+      if (digest.toString() == widget.release['signature']) {
+        debugPrint('TELEMETRY: update_download_complete');
+        debugPrint('TELEMETRY: update_install_success');
+        FlutterDownloader.open(taskId: _taskId!);
+      } else {
+        debugPrint('TELEMETRY: update_failed - Signature mismatch');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update verification failed.')),
+        );
+      }
     }
   }
 
-  static Future<void> _showNoUpdateDialog(
-      BuildContext context, String currentVersion) async {
-    final packageInfo = await PackageInfo.fromPlatform();
-    final buildNumber = packageInfo.buildNumber;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('App is Up to Date'),
-        content: Text(
-            'You are running the latest version ($currentVersion+$buildNumber).'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Update Available',
+            style: Theme.of(context).textTheme.headline6,
           ),
+          SizedBox(height: 20),
+          Text('Version ${widget.release['versionName']} is available.'),
+          SizedBox(height: 10),
+          Text('Changelog:\n${widget.release['changelog']}'),
+          SizedBox(height: 20),
+          if (_isDownloading)
+            LinearProgressIndicator(value: _progress > 0 ? _progress : null)
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (!widget.release['isForced'])
+                  TextButton(
+                    child: Text('Later'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ElevatedButton(
+                  child: Text('Download & Install'),
+                  onPressed: _downloadUpdate,
+                ),
+              ],
+            ),
         ],
       ),
     );
