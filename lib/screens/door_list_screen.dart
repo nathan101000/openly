@@ -7,6 +7,8 @@ import '../services/door_service.dart';
 import '../models/door.dart';
 import '../widgets/door_item.dart';
 import '../widgets/snackbar.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
+import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
 
 class DoorListScreen extends StatefulWidget {
   final bool favoritesOnly;
@@ -25,6 +27,10 @@ class _DoorListScreenState extends State<DoorListScreen> {
   int? selectedFloorId;
   final FocusNode _searchFocusNode = FocusNode();
   final TextEditingController _searchController = TextEditingController();
+  final RefreshController _refreshController =
+      RefreshController(initialRefresh: false);
+  final _headerOffset = ValueNotifier<double>(0.0);
+  late final ScrollController _scrollController;
 
   List<Door> _filteredDoors(FavoritesProvider favorites) {
     return doors.where((d) {
@@ -84,6 +90,7 @@ class _DoorListScreenState extends State<DoorListScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadDoors());
   }
 
@@ -91,7 +98,19 @@ class _DoorListScreenState extends State<DoorListScreen> {
   void dispose() {
     _searchFocusNode.dispose();
     _searchController.dispose();
+    _refreshController.dispose();
+    _scrollController.dispose();
+    _headerOffset.dispose();
     super.dispose();
+  }
+
+  Future<void> _onRefresh() async {
+    await _loadDoors();
+    // let the indicator stay visible a bit before collapsing
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (mounted) {
+      _refreshController.refreshCompleted();
+    }
   }
 
   Widget _buildChipBar() {
@@ -167,9 +186,55 @@ class _DoorListScreenState extends State<DoorListScreen> {
           ? const Center(child: CircularProgressIndicator())
           : doors.isEmpty
               ? const Center(child: Text('No Doors Available'))
-              : RefreshIndicator(
-                  onRefresh: _loadDoors,
+              : SmartRefresher(
+                  controller: _refreshController,
+                  enablePullDown: true,
+                  header: CustomHeader(
+                    refreshStyle: RefreshStyle.Front,
+                    height: 80,
+                    onOffsetChange: (o) =>
+                        _headerOffset.value = o.clamp(0.0, 80.0),
+                    builder: (context, mode) {
+                      return ValueListenableBuilder<double>(
+                        valueListenable: _headerOffset,
+                        builder: (_, offset, __) {
+                          final progress = (offset / 80.0).clamp(0.0, 1.0);
+                          final translateY = offset - 40;
+                          return SizedBox(
+                            height: 80,
+                            child: Stack(
+                              alignment: Alignment.topCenter,
+                              children: [
+                                Transform.translate(
+                                  offset: Offset(0, translateY),
+                                  child: Opacity(
+                                    opacity: progress,
+                                    child: Transform.scale(
+                                      scale: 0.7 + 0.3 * progress,
+                                      child: ExpressiveLoadingIndicator(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        constraints:
+                                            const BoxConstraints.tightFor(
+                                                width: 56, height: 56),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  onRefresh: _onRefresh,
                   child: CustomScrollView(
+                    controller: _scrollController,
+                    key: const PageStorageKey('doorListScroll'),
+                    physics: const AlwaysScrollableScrollPhysics(
+                        parent: ClampingScrollPhysics()),
                     slivers: [
                       SliverPersistentHeader(
                         pinned: true,
