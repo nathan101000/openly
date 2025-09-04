@@ -89,7 +89,9 @@ class _DoorItemState extends State<DoorItem> {
                 IconButton(
                   icon: Icon(
                     isFavorite ? Icons.star : Icons.star_border,
-                    color: isFavorite ? Colors.amber : Colors.grey,
+                    color: isFavorite
+                        ? Theme.of(context).colorScheme.secondary
+                        : Theme.of(context).iconTheme.color,
                   ),
                   onPressed: () {
                     favorites.toggleFavorite(widget.door.id);
@@ -99,7 +101,9 @@ class _DoorItemState extends State<DoorItem> {
                           ? 'Removed from favorites'
                           : 'Added to favorites',
                       success: !isFavorite,
-                      backgroundColor: isFavorite ? Colors.grey : null,
+                      backgroundColor: isFavorite
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context).colorScheme.primary,
                     );
                   },
                 ),
@@ -212,13 +216,19 @@ class _DoorItemState extends State<DoorItem> {
                             child: Icon(
                               isUnlocking ? Icons.lock_open : Icons.lock,
                               key: ValueKey(isUnlocking),
-                              color: isUnlocking ? Colors.green : Colors.grey,
+                              color: isUnlocking
+                                  ? Colors.green
+                                  : Theme.of(context).colorScheme.onPrimary,
                             ),
                           ),
                     label: const Text('Unlock'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isUnlocking ? Colors.green[100] : null,
-                      foregroundColor: isUnlocking ? Colors.green : null,
+                      backgroundColor: isUnlocking
+                          ? Colors.green[100]
+                          : Theme.of(context).colorScheme.primary,
+                      foregroundColor: isUnlocking
+                          ? Colors.green
+                          : Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                 ),

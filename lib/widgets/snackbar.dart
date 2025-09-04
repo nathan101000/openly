@@ -5,7 +5,10 @@ void showAppSnackBar(BuildContext context, String message,
     {bool success = false, Color? backgroundColor, Duration? duration}) {
   final snackBar = SnackBar(
     content: Text(message),
-    backgroundColor: backgroundColor ?? (success ? Colors.green : Colors.red),
+    backgroundColor: backgroundColor ??
+        (success
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.error),
     behavior: SnackBarBehavior.floating,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     duration: duration ?? const Duration(seconds: 3),
@@ -20,11 +23,18 @@ void showCountdownSnackBar(
   BuildContext context,
   String message, {
   int seconds = 5,
+  bool success = true,
+  Color? backgroundColor,
 }) {
   final overlay = Overlay.of(context);
   late OverlayEntry entry;
   int current = seconds;
   Timer? timer;
+
+  final Color bg = backgroundColor ??
+      (success
+          ? Theme.of(context).colorScheme.primary
+          : Theme.of(context).colorScheme.error);
 
   entry = OverlayEntry(
     builder: (context) {
@@ -48,7 +58,7 @@ void showCountdownSnackBar(
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade600,
+                  color: bg,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
@@ -86,7 +96,7 @@ void showCountdownSnackBar(
                               child: CircularProgressIndicator(
                                 value: value,
                                 strokeWidth: 3,
-                                backgroundColor: Colors.green.shade200,
+                                backgroundColor: bg.withOpacity(0.3),
                                 valueColor: const AlwaysStoppedAnimation<Color>(
                                     Colors.white),
                               ),
