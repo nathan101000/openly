@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import './snackbar.dart';
 import 'package:provider/provider.dart';
-import '../models/door.dart';
+import '../models/building.dart';
 import '../providers/auth_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../services/door_service.dart';

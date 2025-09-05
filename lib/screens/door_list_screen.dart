@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../models/api_exception.dart';
 import '../providers/auth_provider.dart';
 import '../providers/favorites_provider.dart';
+import '../models/building.dart';
 import '../services/door_service.dart';
-import '../models/door.dart';
 import '../widgets/door_item.dart';
 import '../widgets/snackbar.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
@@ -47,8 +47,10 @@ class _DoorListScreenState extends State<DoorListScreen> {
   Map<String, List<Door>> _groupByFloor(List<Door> doors) {
     final Map<String, Set<Door>> groups = {};
     for (final door in doors) {
-      final ids = door.floors.isEmpty ? [null] : door.floors.toSet().toList();
-      final names = ids.map((id) => floorNames[id] ?? 'Unknown').toSet();
+      final ids = door.floors.isEmpty ? [-1] : door.floors.toSet().toList();
+      final names = ids
+          .map((id) => floorNames[id]!)
+          .toSet(); 
       for (final name in names) {
         groups.putIfAbsent(name, () => {}).add(door);
       }
@@ -59,10 +61,40 @@ class _DoorListScreenState extends State<DoorListScreen> {
   Future<void> _loadDoors() async {
     auth = Provider.of<AuthProvider>(context, listen: false);
     try {
-      final unlockList =
+      final building =
           await DoorService.fetchDoors(auth.tenantId!, auth.accessToken!);
-      doors = unlockList.doors;
-      floorNames = {for (var f in unlockList.floors) f.id: f.name};
+
+      // Initialize empty doors list
+      doors = [];
+
+      // Add floor-specific doors and elevators
+      for (final f in building.floors.values) {
+        // Add regular doors with their floor numbers
+        for (final d in f.doors) {
+          doors.add(d.copyWithFloor(f.number));
+        }
+
+        // Add elevators as doors
+        f.elevatorIdsByName.forEach((name, id) {
+          doors.add(Door(
+            id: id,
+            name: '${f.displayName} $name',
+            type: DoorType.other,
+            inferredFloor: f.number,
+            side: null,
+            floors: [f.number],
+          ));
+        });
+      }
+
+      // Add unassigned/building-level doors (lobby, etc.)
+      doors.addAll(building.unassignedDoors.map((d) => d.copyWithFloor(null)));
+
+      // Build floor names map
+      floorNames = {
+        for (var f in building.floors.values) f.number: f.displayName,
+        -1: 'Main Building', // Add entry for building-level doors
+      };
       // Show success only if there are doors (optional)
       if (mounted && doors.isNotEmpty) {
         showAppSnackBar(context, 'Doors loaded successfully',
