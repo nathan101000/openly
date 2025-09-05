@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/nathan101000/openly/compare/v1.4.1...v1.5.0) (2025-09-05)
+
+
+### Features
+
+* **door_list:** implement pull-to-refresh functionality with expressive loading indicator ([d5f47b8](https://github.com/nathan101000/openly/commit/d5f47b839cf589ce6a3256c35808c70f31a18728))
+
 ## [1.4.1](https://github.com/nathan101000/openly/compare/v1.4.0...v1.4.1) (2025-08-12)
 
 
