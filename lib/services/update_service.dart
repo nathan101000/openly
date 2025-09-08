@@ -35,12 +35,15 @@ class UpdateService {
         (asset) =>
             asset['name'] != null &&
             asset['name'].toString().toLowerCase().endsWith('.apk') &&
-            asset['name'].toString().contains('+'), // Ensures build number is likely in name
+            asset['name']
+                .toString()
+                .contains('+'), // Ensures build number is likely in name
         orElse: () => null,
       );
 
       if (apkAsset == null) {
-        debugPrint('APK asset not found in release (or name does not contain \'+\').');
+        debugPrint(
+            'APK asset not found in release (or name does not contain \'+\').');
         return;
       }
 
@@ -49,18 +52,22 @@ class UpdateService {
 
       int latestBuildNumber = 0;
       // Expected format: prefix-vX.Y.Z+BUILD.apk or vX.Y.Z+BUILD.apk
-      final apkNamePattern = RegExp(r'v?\d+\.\d+\.\d+\+(\d+)\.apk$', caseSensitive: false);
+      final apkNamePattern =
+          RegExp(r'v?\d+\.\d+\.\d+\+(\d+)\.apk$', caseSensitive: false);
       final match = apkNamePattern.firstMatch(apkName);
       if (match != null && match.groupCount >= 1) {
         latestBuildNumber = int.tryParse(match.group(1)!) ?? 0;
       } else {
-        debugPrint('Could not parse build number from APK name: $apkName. Update check may rely on version name only.');
+        debugPrint(
+            'Could not parse build number from APK name: $apkName. Update check may rely on version name only.');
       }
 
-      if (_isNewer(latestVersionName, currentVersionName, latestBuildNumber, currentBuildNumber)) {
+      if (_isNewer(latestVersionName, currentVersionName, latestBuildNumber,
+          currentBuildNumber)) {
         _showUpdateSheet(context, apkUrl, latestVersionName, apkName);
       } else {
-        debugPrint('App is up to date. Current: v$currentVersionName ($currentBuildNumber), Latest: v$latestVersionName ($latestBuildNumber)');
+        debugPrint(
+            'App is up to date. Current: v$currentVersionName ($currentBuildNumber), Latest: v$latestVersionName ($latestBuildNumber)');
         if (showNoUpdateDialog) {
           _showNoUpdateDialog(context, currentVersionName);
         }
@@ -84,8 +91,16 @@ class UpdateService {
     }
 
     // Fallback to version name semantic compare if latestBuildNum is not usable or build numbers are identical
-    final latestParts = latestVersionName.split('.').map(int.tryParse).whereType<int>().toList();
-    final currentParts = currentVersionName.split('.').map(int.tryParse).whereType<int>().toList();
+    final latestParts = latestVersionName
+        .split('.')
+        .map(int.tryParse)
+        .whereType<int>()
+        .toList();
+    final currentParts = currentVersionName
+        .split('.')
+        .map(int.tryParse)
+        .whereType<int>()
+        .toList();
 
     for (int i = 0; i < latestParts.length; i++) {
       if (i >= currentParts.length || latestParts[i] > currentParts[i]) {
@@ -105,167 +120,167 @@ class UpdateService {
     String filename, {
     String? changelog,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).dialogBackgroundColor,
+      backgroundColor: theme.dialogBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
         return SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 20),
-                  const Icon(Icons.system_update_alt_rounded,
-                      size: 56, color: Colors.blueAccent),
+                ),
+                const SizedBox(height: 20),
+                Icon(
+                  Icons.system_update_alt_rounded,
+                  size: 56,
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'New Update Available',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Version $version is ready to install.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (changelog != null && changelog.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text(
-                    'New Update Available',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Version $version is ready to install.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(color: Colors.grey[700]),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (changelog != null && changelog.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'What’s new:',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'What’s new:',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      changelog,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: Colors.black87),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.blue),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Ensure a stable internet connection and sufficient storage before updating.',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: Colors.blue[900]),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
+                  const SizedBox(height: 4),
+                  Text(
+                    changelog,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
                     children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text('Later'),
-                        ),
-                      ),
+                      Icon(Icons.info_outline, color: colorScheme.primary),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            Navigator.pop(ctx); // Close bottom sheet
-                            await _requestPermissions();
-
-                            // Show loading dialog
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (dialogContext) => const Center( // Use a different context name for the dialog
-                                child: CircularProgressIndicator(),
-                              ),
-                            );
-
-                            try {
-                              OtaUpdate()
-                                  .execute(apkUrl,
-                                      destinationFilename: filename)
-                                  .listen((event) {
-                                debugPrint(
-                                    'OTA status: ${event.status} => ${event.value}');
-                                if (event.status == OtaStatus.INSTALLING || event.status == OtaStatus.INSTALLING) {
-                                  // Dismiss the loading dialog
-                                  // Use rootNavigator: true if the dialog was shown on the root navigator
-                                  if (Navigator.of(context, rootNavigator: true).canPop()) {
-                                     Navigator.of(context, rootNavigator: true).pop();
-                                  }
-                                }
-                              });
-                            } catch (e) {
-                              // Dismiss loading dialog on error
-                              if (Navigator.of(context, rootNavigator: true).canPop()) {
-                                 Navigator.of(context, rootNavigator: true).pop();
-                              }
-                              showDialog(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: const Text('Update Failed'),
-                                  content: Text(e.toString()),
-                                  actions: [
-                                    TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('OK')),
-                                  ],
-                                ),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.download),
-                          label: const Text('Update Now'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Text(
+                          'Ensure a stable internet connection and sufficient storage before updating.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onPrimaryContainer,
                           ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ));
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Later'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(ctx); // Close bottom sheet
+                          await _requestPermissions();
+
+                          // Show loading dialog
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (dialogContext) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+
+                          try {
+                            OtaUpdate()
+                                .execute(apkUrl, destinationFilename: filename)
+                                .listen((event) {
+                              debugPrint(
+                                  'OTA status: ${event.status} => ${event.value}');
+                              if (event.status == OtaStatus.INSTALLING) {
+                                if (Navigator.of(context, rootNavigator: true)
+                                    .canPop()) {
+                                  Navigator.of(context, rootNavigator: true)
+                                      .pop();
+                                }
+                              }
+                            });
+                          } catch (e) {
+                            if (Navigator.of(context, rootNavigator: true)
+                                .canPop()) {
+                              Navigator.of(context, rootNavigator: true).pop();
+                            }
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text('Update Failed'),
+                                content: Text(e.toString()),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.download),
+                        label: const Text('Update Now'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
   }
