@@ -48,9 +48,7 @@ class _DoorListScreenState extends State<DoorListScreen> {
     final Map<String, Set<Door>> groups = {};
     for (final door in doors) {
       final ids = door.floors.isEmpty ? [-1] : door.floors.toSet().toList();
-      final names = ids
-          .map((id) => floorNames[id]!)
-          .toSet(); 
+      final names = ids.map((id) => floorNames[id]!).toSet();
       for (final name in names) {
         groups.putIfAbsent(name, () => {}).add(door);
       }
@@ -308,7 +306,7 @@ class _FloorHeader extends SliverPersistentHeaderDelegate {
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: Theme.of(context).colorScheme.surface,
+      color: Theme.of(context).colorScheme.background,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       alignment: Alignment.centerLeft,
       child: Text(
@@ -323,7 +321,7 @@ class _FloorHeader extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _FloorHeader oldDelegate) =>
-      oldDelegate.title != title;
+      true; // Always rebuild to handle theme changes
 }
 
 class _SearchBarHeader extends SliverPersistentHeaderDelegate {
@@ -362,7 +360,8 @@ class _SearchBarHeader extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(covariant _SearchBarHeader oldDelegate) => false;
+  bool shouldRebuild(covariant _SearchBarHeader oldDelegate) =>
+      true; // Always rebuild to handle theme changes
 }
 
 class _ChipBarHeader extends SliverPersistentHeaderDelegate {
@@ -386,5 +385,6 @@ class _ChipBarHeader extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(covariant _ChipBarHeader oldDelegate) => false;
+  bool shouldRebuild(covariant _ChipBarHeader oldDelegate) =>
+      true; // Always rebuild to handle theme changes
 }
