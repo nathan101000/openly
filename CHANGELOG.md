@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/nathan101000/openly/compare/v1.5.0...v1.6.0) (2025-09-16)
+
+
+### Features
+
+* **update_service:** enhance update process with changelog and progress dialog ([c70098b](https://github.com/nathan101000/openly/commit/c70098b001d6382e48ecda2b11b882bdc56948e9))
+
 # [1.5.0](https://github.com/nathan101000/openly/compare/v1.4.1...v1.5.0) (2025-09-05)
 
 
