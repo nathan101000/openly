@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:ota_update/ota_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -30,6 +32,7 @@ class UpdateService {
       final data = json.decode(response.body);
       final latestVersionName = data['tag_name']?.replaceFirst('v', '') ?? '';
       final assets = data['assets'] as List<dynamic>;
+      final changelog = (data['body'] as String?)?.trim();
 
       final apkAsset = assets.firstWhere(
         (asset) =>
@@ -49,6 +52,9 @@ class UpdateService {
 
       final apkUrl = apkAsset['browser_download_url'];
       final apkName = apkAsset['name'] as String;
+      final int? apkSizeBytes = (apkAsset['size'] is int)
+          ? (apkAsset['size'] as int)
+          : int.tryParse('${apkAsset['size']}');
 
       int latestBuildNumber = 0;
       // Expected format: prefix-vX.Y.Z+BUILD.apk or vX.Y.Z+BUILD.apk
@@ -64,7 +70,8 @@ class UpdateService {
 
       if (_isNewer(latestVersionName, currentVersionName, latestBuildNumber,
           currentBuildNumber)) {
-        _showUpdateSheet(context, apkUrl, latestVersionName, apkName);
+        _showUpdateSheet(context, apkUrl, latestVersionName, apkName,
+            changelog: changelog, totalBytes: apkSizeBytes);
       } else {
         debugPrint(
             'App is up to date. Current: v$currentVersionName ($currentBuildNumber), Latest: v$latestVersionName ($latestBuildNumber)');
@@ -119,6 +126,7 @@ class UpdateService {
     String version, // This is latestVersionName
     String filename, {
     String? changelog,
+    int? totalBytes,
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -172,16 +180,29 @@ class UpdateService {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'What’s new:',
+                      'What’s new',
                       style: theme.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    changelog,
-                    style: theme.textTheme.bodyMedium,
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    child: SingleChildScrollView(
+                      child: MarkdownBody(
+                        data: changelog,
+                        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                          p: theme.textTheme.bodyMedium,
+                          h1: theme.textTheme.titleLarge,
+                          h2: theme.textTheme.titleMedium,
+                          h3: theme.textTheme.titleSmall,
+                          code: theme.textTheme.bodySmall?.copyWith(
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
                 const SizedBox(height: 20),
@@ -223,50 +244,15 @@ class UpdateService {
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           Navigator.pop(ctx); // Close bottom sheet
-                          await _requestPermissions();
+                          final proceed = await _ensureInstallPermission(context);
+                          if (!proceed) return;
 
-                          // Show loading dialog
-                          showDialog(
+                          await _showUpdateProgressDialog(
                             context: context,
-                            barrierDismissible: false,
-                            builder: (dialogContext) => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
+                            apkUrl: apkUrl,
+                            filename: filename,
+                            totalBytes: totalBytes,
                           );
-
-                          try {
-                            OtaUpdate()
-                                .execute(apkUrl, destinationFilename: filename)
-                                .listen((event) {
-                              debugPrint(
-                                  'OTA status: ${event.status} => ${event.value}');
-                              if (event.status == OtaStatus.INSTALLING) {
-                                if (Navigator.of(context, rootNavigator: true)
-                                    .canPop()) {
-                                  Navigator.of(context, rootNavigator: true)
-                                      .pop();
-                                }
-                              }
-                            });
-                          } catch (e) {
-                            if (Navigator.of(context, rootNavigator: true)
-                                .canPop()) {
-                              Navigator.of(context, rootNavigator: true).pop();
-                            }
-                            showDialog(
-                              context: context,
-                              builder: (_) => AlertDialog(
-                                title: const Text('Update Failed'),
-                                content: Text(e.toString()),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('OK'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
                         },
                         icon: const Icon(Icons.download),
                         label: const Text('Update Now'),
@@ -285,11 +271,246 @@ class UpdateService {
     );
   }
 
-  static Future<void> _requestPermissions() async {
+  static Future<bool> _ensureInstallPermission(BuildContext context) async {
     final status = await Permission.requestInstallPackages.status;
-    if (!status.isGranted) {
-      await Permission.requestInstallPackages.request();
+    if (status.isGranted) return true;
+
+    final theme = Theme.of(context);
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Install Permission Needed'),
+        content: Text(
+          'We need install permission so the app can update itself without the Play Store. This lets us safely download and install the latest version.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Not Now'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (proceed != true) return false;
+
+    final req = await Permission.requestInstallPackages.request();
+    if (req.isGranted) return true;
+
+    // If permanently denied, guide to settings
+    if (req.isPermanentlyDenied) {
+      final goSettings = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Permission Required'),
+          content: const Text(
+            'Please enable install permissions in Settings to proceed with the update.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Later'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
+      );
+      if (goSettings == true) {
+        await openAppSettings();
+      }
     }
+    return false;
+  }
+
+  static Future<void> _showUpdateProgressDialog({
+    required BuildContext context,
+    required String apkUrl,
+    required String filename,
+    int? totalBytes,
+  }) async {
+    double progress = 0.0; // 0..1
+    String statusText = 'Preparing download…';
+    bool installing = false;
+    StreamSubscription<OtaEvent>? sub;
+    bool dismissedToBackground = false;
+
+    String _formatBytes(int bytes) {
+      const units = ['B', 'KB', 'MB', 'GB'];
+      double size = bytes.toDouble();
+      int unit = 0;
+      while (size >= 1024 && unit < units.length - 1) {
+        size /= 1024;
+        unit++;
+      }
+      return '${size.toStringAsFixed(unit == 0 ? 0 : 1)} ${units[unit]}';
+    }
+
+    Future<void> startDownload(void Function(void Function()) setState) async {
+      try {
+        sub = OtaUpdate()
+            .execute(apkUrl, destinationFilename: filename)
+            .listen((event) async {
+          debugPrint('OTA status: ${event.status} => ${event.value}');
+          switch (event.status) {
+            case OtaStatus.DOWNLOADING:
+              final pct = double.tryParse('${event.value}') ?? 0.0;
+              setState(() {
+                progress = (pct.clamp(0, 100)) / 100.0;
+                final percentStr = (progress * 100).toStringAsFixed(0);
+                statusText = 'Downloading update ($percentStr%)';
+              });
+              break;
+            case OtaStatus.INSTALLING:
+              setState(() {
+                installing = true;
+                statusText = 'Installing update…';
+              });
+              if (!dismissedToBackground) {
+                // Let the installer take over; close dialog if still open
+                if (Navigator.of(context, rootNavigator: true).canPop()) {
+                  Navigator.of(context, rootNavigator: true).pop();
+                }
+              }
+              break;
+            case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
+              if (!dismissedToBackground) {
+                if (Navigator.of(context, rootNavigator: true).canPop()) {
+                  Navigator.of(context, rootNavigator: true).pop();
+                }
+              }
+              _showFriendlyError(context,
+                  message:
+                      'Install permission is required to complete the update.',
+                  offerRetry: false);
+              break;
+            case OtaStatus.ALREADY_RUNNING_ERROR:
+            case OtaStatus.DOWNLOAD_ERROR:
+            case OtaStatus.INTERNAL_ERROR:
+            case OtaStatus.CHECKSUM_ERROR:
+              if (!dismissedToBackground) {
+                if (Navigator.of(context, rootNavigator: true).canPop()) {
+                  Navigator.of(context, rootNavigator: true).pop();
+                }
+              }
+              _showFriendlyError(context);
+              break;
+            default:
+              break;
+          }
+        });
+      } catch (e) {
+        _showFriendlyError(context, message: e.toString());
+      }
+    }
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(builder: (ctx, setState) {
+          // Start the download once when dialog builds
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            if (sub == null) {
+              await startDownload(setState);
+            }
+          });
+
+          final theme = Theme.of(ctx);
+          final totalStr = totalBytes != null ? _formatBytes(totalBytes) : null;
+          final downloadedBytes =
+              totalBytes != null ? (totalBytes * progress).toInt() : null;
+          final downloadedStr = downloadedBytes != null
+              ? _formatBytes(downloadedBytes)
+              : null;
+
+          return AlertDialog(
+            title: const Text('Updating App'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(statusText, style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 16),
+                if (!installing) ...[
+                  LinearProgressIndicator(value: progress == 0 ? null : progress),
+                  const SizedBox(height: 8),
+                  if (totalStr != null && downloadedStr != null)
+                    Text('$downloadedStr of $totalStr downloaded',
+                        style: theme.textTheme.bodySmall),
+                ] else ...[
+                  const SizedBox(height: 8),
+                  const Center(child: CircularProgressIndicator()),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: installing
+                    ? null
+                    : () {
+                        dismissedToBackground = true;
+                        Navigator.of(dialogContext).pop();
+                      },
+                child: const Text('Background'),
+              ),
+              TextButton(
+                onPressed: installing
+                    ? null
+                    : () async {
+                        try {
+                          await OtaUpdate().cancel();
+                          await sub?.cancel();
+                        } catch (_) {}
+                        if (Navigator.of(dialogContext).canPop()) {
+                          Navigator.of(dialogContext).pop();
+                        }
+                      },
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        });
+      },
+    );
+
+    try {
+      if (!dismissedToBackground) {
+        await sub?.cancel();
+      }
+    } catch (_) {}
+  }
+
+  static void _showFriendlyError(BuildContext context,
+      {String? message, bool offerRetry = true}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Update Problem'),
+        content: Text(
+          message ??
+              'Oops! Something went wrong while updating. Please check your internet connection and try again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Later'),
+          ),
+          if (offerRetry)
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx), // Let caller reopen
+              child: const Text('Retry'),
+            ),
+        ],
+      ),
+    );
   }
 
   static Future<void> _showNoUpdateDialog(
