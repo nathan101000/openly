@@ -192,7 +192,8 @@ class UpdateService {
                     child: SingleChildScrollView(
                       child: MarkdownBody(
                         data: changelog,
-                        styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                        styleSheet:
+                            MarkdownStyleSheet.fromTheme(theme).copyWith(
                           p: theme.textTheme.bodyMedium,
                           h1: theme.textTheme.titleLarge,
                           h2: theme.textTheme.titleMedium,
@@ -235,6 +236,8 @@ class UpdateService {
                         onPressed: () => Navigator.pop(ctx),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
+                          foregroundColor: colorScheme.primary,
+                          side: BorderSide(color: colorScheme.outline),
                         ),
                         child: const Text('Later'),
                       ),
@@ -244,7 +247,8 @@ class UpdateService {
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           Navigator.pop(ctx); // Close bottom sheet
-                          final proceed = await _ensureInstallPermission(context);
+                          final proceed =
+                              await _ensureInstallPermission(context);
                           if (!proceed) return;
 
                           await _showUpdateProgressDialog(
@@ -254,10 +258,14 @@ class UpdateService {
                             totalBytes: totalBytes,
                           );
                         },
-                        icon: const Icon(Icons.download),
-                        label: const Text('Update Now'),
+                        icon:
+                            Icon(Icons.download, color: colorScheme.onPrimary),
+                        label: Text('Update Now',
+                            style: TextStyle(color: colorScheme.onPrimary)),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
                         ),
                       ),
                     ),
@@ -427,9 +435,8 @@ class UpdateService {
           final totalStr = totalBytes != null ? _formatBytes(totalBytes) : null;
           final downloadedBytes =
               totalBytes != null ? (totalBytes * progress).toInt() : null;
-          final downloadedStr = downloadedBytes != null
-              ? _formatBytes(downloadedBytes)
-              : null;
+          final downloadedStr =
+              downloadedBytes != null ? _formatBytes(downloadedBytes) : null;
 
           return AlertDialog(
             title: const Text('Updating App'),
@@ -440,7 +447,8 @@ class UpdateService {
                 Text(statusText, style: theme.textTheme.bodyMedium),
                 const SizedBox(height: 16),
                 if (!installing) ...[
-                  LinearProgressIndicator(value: progress == 0 ? null : progress),
+                  LinearProgressIndicator(
+                      value: progress == 0 ? null : progress),
                   const SizedBox(height: 8),
                   if (totalStr != null && downloadedStr != null)
                     Text('$downloadedStr of $totalStr downloaded',
