@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/update_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -29,10 +30,14 @@ class SettingsScreen extends StatelessWidget {
                       subtitle: Text(auth.userName ?? 'Not provided'),
                     ),
                     const Divider(height: 1),
-                    const ListTile(
-                      leading: Icon(Icons.verified_user),
-                      title: Text('User ID'),
-                      subtitle: Text('Unknown'),
+                    ListTile(
+                      leading: const Icon(Icons.logout, color: Colors.red),
+                      title: const Text('Logout',
+                          style: TextStyle(color: Colors.red)),
+                      subtitle: const Text('Sign out of your account'),
+                      trailing: const Icon(Icons.arrow_forward_ios,
+                          size: 16, color: Colors.red),
+                      onTap: () => _confirmLogout(context, auth),
                     ),
                   ],
                 ),
@@ -110,31 +115,36 @@ class SettingsScreen extends StatelessWidget {
               // App Section
               _buildSectionHeader(context, 'App'),
               Card(
-                child: ListTile(
-                  leading: const Icon(Icons.system_update_alt),
-                  title: const Text('Check for Updates'),
-                  subtitle: const Text('Get the latest features and fixes'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => UpdateService.checkForUpdates(context,
-                      showNoUpdateDialog: true),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.system_update_alt),
+                      title: const Text('Check for Updates'),
+                      subtitle: const Text('Get the latest features and fixes'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => UpdateService.checkForUpdates(context,
+                          showNoUpdateDialog: true),
+                    ),
+                    const Divider(height: 1),
+                    FutureBuilder<PackageInfo>(
+                      future: PackageInfo.fromPlatform(),
+                      builder: (context, snapshot) {
+                        final versionText = (snapshot.hasData)
+                            ? '${snapshot.data!.version}'.split('+').first
+                            : 'Loading...';
+
+                        return ListTile(
+                          leading: const Icon(Icons.info_outline),
+                          title: const Text('Version'),
+                          subtitle: Text(versionText),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
 
               const SizedBox(height: 24),
-
-              // Actions Section
-              _buildSectionHeader(context, 'Actions'),
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.red),
-                  title:
-                      const Text('Logout', style: TextStyle(color: Colors.red)),
-                  subtitle: const Text('Sign out of your account'),
-                  trailing: const Icon(Icons.arrow_forward_ios,
-                      size: 16, color: Colors.red),
-                  onTap: () => _confirmLogout(context, auth),
-                ),
-              ),
             ],
           );
         },
