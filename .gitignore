@@ -61,3 +61,4 @@ analysis_options.yaml
 /android/key.properties
 /android/app/openly-key.jks
 openly-key.jks
+.github/copilot-instructions.md
