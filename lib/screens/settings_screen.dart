@@ -31,12 +31,14 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.logout, color: Colors.red),
-                      title: const Text('Logout',
-                          style: TextStyle(color: Colors.red)),
+                      leading: Icon(Icons.logout,
+                          color: Theme.of(context).colorScheme.error),
+                      title: Text('Logout',
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.error)),
                       subtitle: const Text('Sign out of your account'),
-                      trailing: const Icon(Icons.arrow_forward_ios,
-                          size: 16, color: Colors.red),
+                      trailing: Icon(Icons.arrow_forward_ios,
+                          size: 16, color: Theme.of(context).colorScheme.error),
                       onTap: () => _confirmLogout(context, auth),
                     ),
                   ],
@@ -171,6 +173,9 @@ class SettingsScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.onSurface,
+            ),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
@@ -179,7 +184,11 @@ class SettingsScreen extends StatelessWidget {
               await auth.logout();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            child: const Text('Logout'),
           ),
         ],
       ),
