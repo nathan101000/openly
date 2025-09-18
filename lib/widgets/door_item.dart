@@ -142,7 +142,7 @@ class _DoorItemState extends State<DoorItem> {
                                           leading: const Icon(Icons.flash_on),
                                           title: const Text('Pulse (5s)'),
                                           onTap: () => Navigator.pop(
-                                              ctx, {'mode': 'pulse'}),
+                                              ctx, {'mode': 'pulse'},),
                                         ),
                                         ListTile(
                                           leading: const Icon(Icons.timer),
@@ -150,7 +150,7 @@ class _DoorItemState extends State<DoorItem> {
                                             children: [
                                               const Text('Timed'),
                                               const SizedBox(width: 8),
-                                              Text('(${timedDuration} min)'),
+                                              Text('($timedDuration min)'),
                                             ],
                                           ),
                                           subtitle: Column(
@@ -163,7 +163,7 @@ class _DoorItemState extends State<DoorItem> {
                                                 min: 1,
                                                 max: 60,
                                                 divisions: 59,
-                                                label: '${timedDuration} min',
+                                                label: '$timedDuration min',
                                                 onChanged: (v) =>
                                                     setModalState(() {
                                                   timedDuration = v.round();
@@ -177,14 +177,8 @@ class _DoorItemState extends State<DoorItem> {
                                           ),
                                           onTap: () => Navigator.pop(ctx, {
                                             'mode': 'timed',
-                                            'duration': timedDuration
+                                            'duration': timedDuration,
                                           }),
-                                        ),
-                                        const Divider(),
-                                        ListTile(
-                                          leading: const Icon(Icons.cancel),
-                                          title: const Text('Cancel'),
-                                          onTap: () => Navigator.pop(ctx, null),
                                         ),
                                       ],
                                     ),
@@ -198,7 +192,7 @@ class _DoorItemState extends State<DoorItem> {
                                 result['mode'] == 'timed') {
                               _unlock(
                                   isPulse: false,
-                                  customDuration: result['duration']);
+                                  customDuration: result['duration'],);
                             }
                           },
                     icon: isUnlocking

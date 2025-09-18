@@ -33,13 +33,13 @@ class SettingsScreen extends StatelessWidget {
                     const Divider(height: 1),
                     ListTile(
                       leading: Icon(Icons.logout,
-                          color: Theme.of(context).colorScheme.error),
+                          color: Theme.of(context).colorScheme.error,),
                       title: Text('Logout',
                           style: TextStyle(
-                              color: Theme.of(context).colorScheme.error)),
+                              color: Theme.of(context).colorScheme.error,),),
                       subtitle: const Text('Sign out of your account'),
                       trailing: Icon(Icons.arrow_forward_ios,
-                          size: 16, color: Theme.of(context).colorScheme.error),
+                          size: 16, color: Theme.of(context).colorScheme.error,),
                       onTap: () => _confirmLogout(context, auth),
                     ),
                   ],
@@ -106,14 +106,14 @@ class SettingsScreen extends StatelessWidget {
                       subtitle: const Text('Get the latest features and fixes'),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () => UpdateService.checkForUpdates(context,
-                          showNoUpdateDialog: true),
+                          showNoUpdateDialog: true,),
                     ),
                     const Divider(height: 1),
                     FutureBuilder<PackageInfo>(
                       future: PackageInfo.fromPlatform(),
                       builder: (context, snapshot) {
                         final versionText = (snapshot.hasData)
-                            ? '${snapshot.data!.version}'.split('+').first
+                            ? snapshot.data!.version.split('+').first
                             : 'Loading...';
 
                         return ListTile(

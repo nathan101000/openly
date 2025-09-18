@@ -60,11 +60,11 @@ class AuthService {
       if (error == 'invalid_grant' &&
           description.toLowerCase().contains('locked')) {
         throw ApiException('account_locked',
-            'Your account is locked. Please contact support.');
+            'Your account is locked. Please contact support.',);
       } else if (error == 'invalid_grant' &&
           description.toLowerCase().contains('incorrect')) {
         throw ApiException('wrong_password',
-            'The email or password you entered is incorrect.');
+            'The email or password you entered is incorrect.',);
       }
 
       throw ApiException('login_failed', description);

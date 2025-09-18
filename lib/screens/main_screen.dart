@@ -84,7 +84,7 @@ class _MainScreenState extends State<MainScreen> {
                             icon: d.icon,
                             selectedIcon: d.selectedIcon ?? d.icon,
                             label: Text(d.label),
-                          ))
+                          ),)
                       .toList(),
                 ),
                 const VerticalDivider(thickness: 1, width: 1),

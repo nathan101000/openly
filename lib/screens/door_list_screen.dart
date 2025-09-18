@@ -81,7 +81,7 @@ class _DoorListScreenState extends State<DoorListScreen> {
             inferredFloor: f.number,
             side: null,
             floors: [f.number],
-          ));
+          ),);
         });
       }
 
@@ -96,7 +96,7 @@ class _DoorListScreenState extends State<DoorListScreen> {
       // Show success only if there are doors (optional)
       if (mounted && doors.isNotEmpty) {
         showAppSnackBar(context, 'Doors loaded successfully',
-            success: true, duration: const Duration(seconds: 1));
+            success: true, duration: const Duration(seconds: 1),);
       }
       // If you want to always show success, use:
       // if (mounted) showAppSnackBar(context, 'Doors refreshed', success: true);
@@ -152,7 +152,7 @@ class _DoorListScreenState extends State<DoorListScreen> {
         selected: selectedFloorId == null,
         onSelected: (_) => setState(() => selectedFloorId = null),
       ),
-    ));
+    ),);
     final entries = floorNames.entries.toList()
       ..sort((a, b) => a.value.compareTo(b.value));
     for (final entry in entries) {
@@ -163,7 +163,7 @@ class _DoorListScreenState extends State<DoorListScreen> {
           selected: selectedFloorId == entry.key,
           onSelected: (_) => setState(() => selectedFloorId = entry.key),
         ),
-      ));
+      ),);
     }
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -181,7 +181,7 @@ class _DoorListScreenState extends State<DoorListScreen> {
       slivers.add(SliverPersistentHeader(
         pinned: false,
         delegate: _FloorHeader(name),
-      ));
+      ),);
       slivers.add(SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => DoorItem(
@@ -189,19 +189,19 @@ class _DoorListScreenState extends State<DoorListScreen> {
             onUnlock: ({UnlockMode? mode, int? duration}) {
               if (mode == UnlockMode.pulse) {
                 showCountdownSnackBar(context, 'Unlocked ${items[index].name}',
-                    seconds: 5);
+                    seconds: 5,);
               } else if (mode == UnlockMode.timed) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                       content: Text(
-                          'Unlocked ${items[index].name} for $duration min')),
+                          'Unlocked ${items[index].name} for $duration min',),),
                 );
               }
             },
           ),
           childCount: items.length,
         ),
-      ));
+      ),);
     }
     return slivers;
   }
@@ -247,7 +247,7 @@ class _DoorListScreenState extends State<DoorListScreen> {
                                             .primary,
                                         constraints:
                                             const BoxConstraints.tightFor(
-                                                width: 56, height: 56),
+                                                width: 56, height: 56,),
                                       ),
                                     ),
                                   ),
@@ -264,7 +264,7 @@ class _DoorListScreenState extends State<DoorListScreen> {
                     controller: _scrollController,
                     key: const PageStorageKey('doorListScroll'),
                     physics: const AlwaysScrollableScrollPhysics(
-                        parent: ClampingScrollPhysics()),
+                        parent: ClampingScrollPhysics(),),
                     slivers: [
                       SliverPersistentHeader(
                         pinned: true,
@@ -304,7 +304,7 @@ class _FloorHeader extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+      BuildContext context, double shrinkOffset, bool overlapsContent,) {
     return Container(
       color: Theme.of(context).colorScheme.background,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -342,11 +342,11 @@ class _SearchBarHeader extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+      BuildContext context, double shrinkOffset, bool overlapsContent,) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.symmetric(
-          horizontal: 12.0, vertical: 8.0), // more breathing room
+          horizontal: 12.0, vertical: 8.0,), // more breathing room
       alignment: Alignment.center,
       child: SearchBar(
         controller: controller,
@@ -376,7 +376,7 @@ class _ChipBarHeader extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+      BuildContext context, double shrinkOffset, bool overlapsContent,) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       alignment: Alignment.centerLeft,

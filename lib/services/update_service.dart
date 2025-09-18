@@ -11,7 +11,7 @@ class UpdateService {
   static const String githubRepo = 'nathan101000/openly';
 
   static Future<void> checkForUpdates(BuildContext context,
-      {bool showNoUpdateDialog = false}) async {
+      {bool showNoUpdateDialog = false,}) async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersionName = packageInfo.version;
@@ -46,7 +46,7 @@ class UpdateService {
 
       if (apkAsset == null) {
         debugPrint(
-            'APK asset not found in release (or name does not contain \'+\').');
+            'APK asset not found in release (or name does not contain \'+\').',);
         return;
       }
 
@@ -65,16 +65,16 @@ class UpdateService {
         latestBuildNumber = int.tryParse(match.group(1)!) ?? 0;
       } else {
         debugPrint(
-            'Could not parse build number from APK name: $apkName. Update check may rely on version name only.');
+            'Could not parse build number from APK name: $apkName. Update check may rely on version name only.',);
       }
 
       if (_isNewer(latestVersionName, currentVersionName, latestBuildNumber,
-          currentBuildNumber)) {
+          currentBuildNumber,)) {
         _showUpdateSheet(context, apkUrl, latestVersionName, apkName,
-            changelog: changelog, totalBytes: apkSizeBytes);
+            changelog: changelog, totalBytes: apkSizeBytes,);
       } else {
         debugPrint(
-            'App is up to date. Current: v$currentVersionName ($currentBuildNumber), Latest: v$latestVersionName ($latestBuildNumber)');
+            'App is up to date. Current: v$currentVersionName ($currentBuildNumber), Latest: v$latestVersionName ($latestBuildNumber)',);
         if (showNoUpdateDialog) {
           _showNoUpdateDialog(context, currentVersionName);
         }
@@ -261,7 +261,7 @@ class UpdateService {
                         icon:
                             Icon(Icons.download, color: colorScheme.onPrimary),
                         label: Text('Update Now',
-                            style: TextStyle(color: colorScheme.onPrimary)),
+                            style: TextStyle(color: colorScheme.onPrimary),),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           backgroundColor: colorScheme.primary,
@@ -397,7 +397,7 @@ class UpdateService {
               _showFriendlyError(context,
                   message:
                       'Install permission is required to complete the update.',
-                  offerRetry: false);
+                  offerRetry: false,);
               break;
             case OtaStatus.ALREADY_RUNNING_ERROR:
             case OtaStatus.DOWNLOAD_ERROR:
@@ -448,11 +448,11 @@ class UpdateService {
                 const SizedBox(height: 16),
                 if (!installing) ...[
                   LinearProgressIndicator(
-                      value: progress == 0 ? null : progress),
+                      value: progress == 0 ? null : progress,),
                   const SizedBox(height: 8),
                   if (totalStr != null && downloadedStr != null)
                     Text('$downloadedStr of $totalStr downloaded',
-                        style: theme.textTheme.bodySmall),
+                        style: theme.textTheme.bodySmall,),
                 ] else ...[
                   const SizedBox(height: 8),
                   const Center(child: CircularProgressIndicator()),
@@ -485,7 +485,7 @@ class UpdateService {
               ),
             ],
           );
-        });
+        },);
       },
     );
 
@@ -497,7 +497,7 @@ class UpdateService {
   }
 
   static void _showFriendlyError(BuildContext context,
-      {String? message, bool offerRetry = true}) {
+      {String? message, bool offerRetry = true,}) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -522,7 +522,7 @@ class UpdateService {
   }
 
   static Future<void> _showNoUpdateDialog(
-      BuildContext context, String currentVersion) async {
+      BuildContext context, String currentVersion,) async {
     final packageInfo = await PackageInfo.fromPlatform();
     final buildNumber = packageInfo.buildNumber;
 
@@ -531,7 +531,7 @@ class UpdateService {
       builder: (ctx) => AlertDialog(
         title: const Text('App is Up to Date'),
         content: Text(
-            'You are running the latest version ($currentVersion+$buildNumber).'),
+            'You are running the latest version ($currentVersion+$buildNumber).',),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

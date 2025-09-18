@@ -138,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen>
                           suffixIcon: IconButton(
                             icon: Icon(_obscurePassword
                                 ? Icons.visibility_off
-                                : Icons.visibility),
+                                : Icons.visibility,),
                             onPressed: () => setState(() {
                               _obscurePassword = !_obscurePassword;
                             }),

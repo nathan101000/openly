@@ -25,7 +25,7 @@ class DoorService {
         throw ApiException('fetch_doors_failed', errorMessage);
       } catch (_) {
         throw ApiException(
-            'invalid_response', 'Failed to load doors.\n${response.body}');
+            'invalid_response', 'Failed to load doors.\n${response.body}',);
       }
     }
 
@@ -66,7 +66,7 @@ class DoorService {
         throw ApiException('unlock_failed', errorMessage);
       } catch (_) {
         throw ApiException(
-            'invalid_response', 'Failed to unlock door.\n${response.body}');
+            'invalid_response', 'Failed to unlock door.\n${response.body}',);
       }
     }
   }

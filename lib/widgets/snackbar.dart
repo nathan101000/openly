@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 void showAppSnackBar(BuildContext context, String message,
-    {bool success = false, Color? backgroundColor, Duration? duration}) {
+    {bool success = false, Color? backgroundColor, Duration? duration,}) {
   final snackBar = SnackBar(
     content: Text(message),
     backgroundColor: backgroundColor ??
@@ -65,7 +65,7 @@ void showCountdownSnackBar(
                       color: Colors.black.withOpacity(0.2),
                       blurRadius: 6,
                       offset: const Offset(0, 3),
-                    )
+                    ),
                   ],
                 ),
                 child: Row(
@@ -98,7 +98,7 @@ void showCountdownSnackBar(
                                 strokeWidth: 3,
                                 backgroundColor: bg.withOpacity(0.3),
                                 valueColor: const AlwaysStoppedAnimation<Color>(
-                                    Colors.white),
+                                    Colors.white,),
                               ),
                             );
                           },

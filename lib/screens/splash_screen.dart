@@ -213,7 +213,7 @@ class _SplashScreenState extends State<SplashScreen>
                                                 gradient: RadialGradient(
                                                   colors: [
                                                     const Color(
-                                                        0x4D22D3EE), // cyan-400/30
+                                                        0x4D22D3EE,), // cyan-400/30
                                                     Colors.transparent,
                                                   ],
                                                   stops: const [0.0, 0.7],
@@ -303,7 +303,7 @@ class _SplashScreenState extends State<SplashScreen>
                                           gradient: RadialGradient(
                                             colors: [
                                               const Color(
-                                                  0x3322D3EE), // cyan-400/20
+                                                  0x3322D3EE,), // cyan-400/20
                                               Colors.transparent,
                                             ],
                                             stops: const [0.0, 0.7],
