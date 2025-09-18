@@ -1,3 +1,11 @@
+# [1.7.0](https://github.com/nathan101000/openly/compare/v1.6.0...v1.7.0) (2025-09-18)
+
+
+### Features
+
+* **settings_screen:** add color picker for theme customization ([89cdcfd](https://github.com/nathan101000/openly/commit/89cdcfd3d3c63344ff1676cb407e60f5a9ad868b))
+* **settings_screen:** add version info and update logout functionality ([5c37e76](https://github.com/nathan101000/openly/commit/5c37e76e32f00c0bf09e2e62e6862647afda9206))
+
 # [1.6.0](https://github.com/nathan101000/openly/compare/v1.5.0...v1.6.0) (2025-09-16)
 
 
