@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/update_service.dart';
+import 'package:flex_color_picker/flex_color_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -76,37 +77,17 @@ class SettingsScreen extends StatelessWidget {
                       leading: const Icon(Icons.palette),
                       title: const Text('Theme Color'),
                       subtitle: const Text('Choose your preferred color'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (final color in [
-                            const Color(0xff4b5c92),
-                            Colors.teal,
-                            Colors.deepOrange,
-                            Colors.purple
-                          ])
-                            GestureDetector(
-                              onTap: () => theme.updateSeedColor(color),
-                              child: Container(
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 2),
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: theme.seedColor.toARGB32() ==
-                                            color.toARGB32()
-                                        ? Colors.black
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                      trailing: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: theme.seedColor,
+                          shape: BoxShape.circle,
+                          border:
+                              Border.all(color: Theme.of(context).dividerColor),
+                        ),
                       ),
+                      onTap: () => _showColorPicker(context, theme),
                     ),
                   ],
                 ),
@@ -151,6 +132,51 @@ class SettingsScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  void _showColorPicker(BuildContext context, ThemeProvider theme) async {
+    Color selected = theme.seedColor;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Pick theme color'),
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 320,
+              child: ColorPicker(
+                color: selected,
+                onColorChanged: (c) => selected = c,
+                showColorName: false,
+                showColorCode: false,
+                enableOpacity: false,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(ctx).colorScheme.onSurface,
+              ),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                theme.updateSeedColor(selected);
+                Navigator.of(ctx).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.primary,
+                foregroundColor: Theme.of(ctx).colorScheme.onPrimary,
+              ),
+              child: const Text('Select'),
+            ),
+          ],
+        );
+      },
     );
   }
 
