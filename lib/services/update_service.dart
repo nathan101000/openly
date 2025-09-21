@@ -300,6 +300,10 @@ class UpdateService {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Continue'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+            ),
           ),
         ],
       ),
